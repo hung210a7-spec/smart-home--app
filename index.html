@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Home AI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.4/mqtt.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #0f0f1a;
+  color: #e0e0e0;
+  min-height: 100vh;
+  padding-bottom: 30px;
+}
+.header {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid #2d2d5a;
+}
+.header h1 {
+  font-size: 1.5em;
+  background: linear-gradient(90deg, #7c3aed, #2563eb);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+}
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.78em;
+  color: #888;
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #555;
+}
+.dot.green { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+.dot.yellow { background: #eab308; box-shadow: 0 0 6px #eab308; }
+
+/* Setup panel */
+.setup-panel {
+  background: #1e1e3a;
+  border: 1px solid #2d2d5a;
+  border-radius: 16px;
+  margin: 16px;
+  padding: 16px;
+}
+.setup-panel h3 { font-size: 0.85em; color: #7c3aed; margin-bottom: 12px; }
+.input-group { margin-bottom: 10px; }
+.input-group label { font-size: 0.75em; color: #888; display: block; margin-bottom: 4px; }
+.input-group input {
+  width: 100%;
+  background: #0f0f1a;
+  border: 1px solid #2d2d5a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #e0e0e0;
+  font-size: 0.88em;
+  outline: none;
+}
+.input-group input:focus { border-color: #7c3aed; }
+.btn-connect {
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(90deg, #7c3aed, #2563eb);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+/* Voice section */
+.voice-section {
+  text-align: center;
+  padding: 24px 16px 16px;
+}
+.mic-btn {
+  width: 100px; height: 100px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  font-size: 2.5em;
+  cursor: pointer;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  box-shadow: 0 0 30px rgba(124,58,237,0.4);
+}
+.mic-btn:disabled {
+  background: #333;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.mic-btn.listening {
+  animation: pulse 1.2s infinite;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 0 40px rgba(239,68,68,0.6);
+}
+.mic-btn.processing {
+  animation: spin 1s linear infinite;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+@keyframes pulse {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.voice-hint { font-size: 0.82em; color: #666; margin-bottom: 6px; }
+.voice-status {
+  font-size: 0.88em;
+  color: #7c3aed;
+  min-height: 24px;
+  margin-bottom: 12px;
+}
+
+/* Chat log */
+.chat-log {
+  background: #1e1e3a;
+  border: 1px solid #2d2d5a;
+  border-radius: 14px;
+  margin: 0 16px 16px;
+  padding: 14px;
+  min-height: 120px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.chat-msg {
+  font-size: 0.82em;
+  padding: 6px 0;
+  border-bottom: 1px solid #2d2d5a;
+  line-height: 1.5;
+}
+.chat-msg:last-child { border-bottom: none; }
+.chat-msg .time { color: #555; font-size: 0.85em; margin-right: 6px; }
+.chat-msg .user { color: #93c5fd; }
+.chat-msg .ai { color: #86efac; }
+.chat-msg .action { color: #7c3aed; }
+.chat-msg .error { color: #f87171; }
+
+/* Device grid */
+.device-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0 16px;
+}
+.device-card {
+  background: linear-gradient(135deg, #1e1e3a, #252545);
+  border: 1px solid #2d2d5a;
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+.device-card.on {
+  border-color: #7c3aed;
+  box-shadow: 0 0 18px rgba(124,58,237,0.25);
+}
+.device-card .icon { font-size: 2em; margin-bottom: 8px; }
+.device-card .name { font-size: 0.85em; font-weight: 600; margin-bottom: 4px; }
+.device-card .state {
+  font-size: 0.72em;
+  color: #555;
+  background: #0f0f1a;
+  padding: 3px 10px;
+  border-radius: 20px;
+  display: inline-block;
+}
+.device-card.on .state { color: #7c3aed; background: rgba(124,58,237,0.15); }
+
+.commands-hint {
+  background: #1e1e3a;
+  border: 1px solid #2d2d5a;
+  border-radius: 14px;
+  margin: 12px 16px 0;
+  padding: 14px;
+}
+.commands-hint h3 { font-size: 0.8em; color: #7c3aed; margin-bottom: 8px; }
+.cmd { font-size: 0.76em; color: #666; padding: 2px 0; }
+.cmd span { color: #aaa; font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏠 SMART HOME AI</h1>
+  <div class="status-bar">
+    <div class="dot" id="mqttDot"></div>
+    <span id="mqttStatus">Chưa kết nối</span>
+  </div>
+</div>
+
+<!-- Cấu hình -->
+<div class="setup-panel">
+  <h3>⚙️ Cấu hình</h3>
+  <div class="input-group">
+    <label>Gemini API Key</label>
+    <input type="password" id="apiKey" placeholder="AIza..." />
+  </div>
+  <div class="input-group">
+    <label>MQTT Topic (đặt tên riêng để tránh trùng)</label>
+    <input type="text" id="mqttTopic" value="smarthome/nhacuatoi/cmd" />
+  </div>
+  <button class="btn-connect" onclick="connect()">🔌 Kết nối</button>
+</div>
+
+<!-- Voice -->
+<div class="voice-section">
+  <p class="voice-hint">Nhấn mic và nói lệnh điều khiển</p>
+  <button class="mic-btn" id="micBtn" onclick="startVoice()" disabled>🎤</button>
+  <div class="voice-status" id="voiceStatus">Chưa kết nối MQTT</div>
+</div>
+
+<!-- Chat log -->
+<div class="chat-log" id="chatLog">
+  <div class="chat-msg"><span class="time">--:--</span><span class="ai">Nhật ký lệnh sẽ hiển thị ở đây...</span></div>
+</div>
+
+<!-- Device cards -->
+<div class="device-grid">
+  <div class="device-card" id="card-light1" onclick="manualToggle('light1')">
+    <div class="icon">💡</div>
+    <div class="name">Đèn 1</div>
+    <div class="state" id="state-light1">Tắt</div>
+  </div>
+  <div class="device-card" id="card-light2" onclick="manualToggle('light2')">
+    <div class="icon">💡</div>
+    <div class="name">Đèn 2</div>
+    <div class="state" id="state-light2">Tắt</div>
+  </div>
+  <div class="device-card" id="card-fan" onclick="manualToggle('fan')">
+    <div class="icon">🌀</div>
+    <div class="name">Quạt</div>
+    <div class="state" id="state-fan">Tắt</div>
+  </div>
+  <div class="device-card" style="cursor:default;">
+    <div class="icon">🌡️</div>
+    <div class="name">Nhiệt độ</div>
+    <div class="state" id="state-temp">-- °C / -- %</div>
+  </div>
+</div>
+
+<!-- Gợi ý lệnh -->
+<div class="commands-hint">
+  <h3>📋 Lệnh mẫu</h3>
+  <div class="cmd">• <span>"bật đèn một"</span> / <span>"tắt đèn hai"</span></div>
+  <div class="cmd">• <span>"bật quạt"</span> / <span>"tắt quạt"</span></div>
+  <div class="cmd">• <span>"bật tất cả"</span> / <span>"tắt tất cả đi"</span></div>
+  <div class="cmd">• <span>"trời nóng quá"</span> → Gemini tự hiểu bật quạt</div>
+  <div class="cmd">• <span>"turn on the lights"</span></div>
+</div>
+
+<script>
+// ===== STATE =====
+let mqttClient = null;
+let isListening = false;
+let isProcessing = false;
+let mqttTopic = '';
+const deviceStates = { light1: false, light2: false, fan: false };
+
+// ===== MQTT =====
+function connect() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  mqttTopic = document.getElementById('mqttTopic').value.trim();
+
+  if (!apiKey) { alert('Nhập Gemini API Key!'); return; }
+  if (!mqttTopic) { alert('Nhập MQTT Topic!'); return; }
+
+  localStorage.setItem('smarthome_apikey', apiKey);
+  localStorage.setItem('smarthome_topic', mqttTopic);
+
+  setStatus('Đang kết nối MQTT...', 'yellow');
+
+  const clientId = 'webapp_' + Math.random().toString(16).slice(2, 8);
+  mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
+    clientId,
+    clean: true,
+    reconnectPeriod: 3000,
+  });
+
+  mqttClient.on('connect', () => {
+    setStatus('Đã kết nối ✓', 'green');
+    document.getElementById('micBtn').disabled = false;
+    document.getElementById('voiceStatus').textContent = 'Nhấn mic để ra lệnh';
+
+    // Subscribe topic trạng thái từ ESP32
+    mqttClient.subscribe(mqttTopic.replace('/cmd', '/status'));
+    addLog('ai', 'Đã kết nối MQTT broker. Sẵn sàng!');
+  });
+
+  mqttClient.on('message', (topic, message) => {
+    try {
+      const data = JSON.parse(message.toString());
+      if (data.light1 !== undefined) updateCard('light1', data.light1);
+      if (data.light2 !== undefined) updateCard('light2', data.light2);
+      if (data.fan !== undefined) updateCard('fan', data.fan);
+      if (data.temp !== undefined) {
+        document.getElementById('state-temp').textContent =
+          parseFloat(data.temp).toFixed(1) + '°C / ' + parseFloat(data.humi).toFixed(1) + '%';
+      }
+    } catch(e) {}
+  });
+
+  mqttClient.on('error', (err) => {
+    setStatus('Lỗi kết nối', '');
+    addLog('error', 'MQTT lỗi: ' + err.message);
+  });
+
+  mqttClient.on('disconnect', () => {
+    setStatus('Mất kết nối', '');
+    document.getElementById('micBtn').disabled = true;
+    document.getElementById('voiceStatus').textContent = 'Mất kết nối MQTT';
+  });
+}
+
+// ===== VOICE =====
+function startVoice() {
+  if (isProcessing) return;
+  if (isListening) return;
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert('Dùng Chrome hoặc Edge nhé!'); return; }
+
+  const recognition = new SR();
+  recognition.lang = 'vi-VN';
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    isListening = true;
+    document.getElementById('micBtn').classList.add('listening');
+    document.getElementById('voiceStatus').textContent = '🔴 Đang nghe...';
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    if (!isProcessing) {
+      document.getElementById('micBtn').classList.remove('listening');
+      document.getElementById('voiceStatus').textContent = 'Nhấn mic để ra lệnh';
+    }
+  };
+
+  recognition.onerror = (e) => {
+    isListening = false;
+    document.getElementById('micBtn').classList.remove('listening');
+    document.getElementById('voiceStatus').textContent = 'Lỗi mic: ' + e.error;
+  };
+
+  recognition.onresult = async (e) => {
+    const text = e.results[0][0].transcript;
+    addLog('user', '🎙️ "' + text + '"');
+    document.getElementById('micBtn').classList.remove('listening');
+    await processWithGemini(text);
+  };
+
+  recognition.start();
+}
+
+// ===== GEMINI =====
+async function processWithGemini(text) {
+  isProcessing = true;
+  document.getElementById('micBtn').classList.add('processing');
+  document.getElementById('voiceStatus').textContent = '🤖 Gemini đang xử lý...';
+
+  const apiKey = localStorage.getItem('smarthome_apikey');
+  const prompt = `Bạn là trợ lý điều khiển nhà thông minh. Phân tích lệnh sau và trả về JSON.
+Thiết bị: light1 (đèn 1), light2 (đèn 2), fan (quạt), all (tất cả).
+Action: "on" hoặc "off".
+Nếu lệnh không liên quan đến thiết bị, trả về {"error": "không hiểu"}.
+Chỉ trả về JSON thuần, không markdown, không giải thích.
+Ví dụ: {"device":"light1","action":"on"} hoặc {"device":"all","action":"off"}
+
+Lệnh: "${text}"`;
+
+  try {
+    const res = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=' + apiKey,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 100 }
+        })
+      }
+    );
+
+    const data = await res.json();
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const clean = raw?.replace(/```json|```/g, '').trim();
+    const cmd = JSON.parse(clean);
+
+    if (cmd.error) {
+      addLog('error', '❓ ' + cmd.error);
+      document.getElementById('voiceStatus').textContent = '❓ Không nhận ra lệnh';
+    } else {
+      addLog('action', '⚡ ' + getActionText(cmd.device, cmd.action));
+      sendCommand(cmd.device, cmd.action);
+      document.getElementById('voiceStatus').textContent = '✅ ' + getActionText(cmd.device, cmd.action);
+    }
+  } catch (err) {
+    addLog('error', '❌ Lỗi Gemini: ' + err.message);
+    document.getElementById('voiceStatus').textContent = '❌ Lỗi xử lý';
+  }
+
+  isProcessing = false;
+  document.getElementById('micBtn').classList.remove('processing');
+  setTimeout(() => {
+    document.getElementById('voiceStatus').textContent = 'Nhấn mic để ra lệnh';
+  }, 3000);
+}
+
+// ===== MQTT PUBLISH =====
+function sendCommand(device, action) {
+  if (!mqttClient || !mqttClient.connected) return;
+  const payload = JSON.stringify({ device, action });
+  mqttClient.publish(mqttTopic, payload, { qos: 1 });
+
+  // Cập nhật UI ngay
+  if (device === 'all') {
+    ['light1','light2','fan'].forEach(d => updateCard(d, action === 'on'));
+  } else {
+    updateCard(device, action === 'on');
+  }
+}
+
+function manualToggle(device) {
+  const newState = !deviceStates[device];
+  sendCommand(device, newState ? 'on' : 'off');
+  addLog('action', '👆 Bấm tay: ' + getActionText(device, newState ? 'on' : 'off'));
+}
+
+// ===== UI HELPERS =====
+function updateCard(device, isOn) {
+  deviceStates[device] = isOn;
+  const card = document.getElementById('card-' + device);
+  const state = document.getElementById('state-' + device);
+  if (!card) return;
+  card.className = 'device-card' + (isOn ? ' on' : '');
+  state.textContent = isOn ? 'Bật' : 'Tắt';
+}
+
+function getActionText(device, action) {
+  const names = { light1:'Đèn 1', light2:'Đèn 2', fan:'Quạt', all:'Tất cả' };
+  return (names[device] || device) + ' → ' + (action === 'on' ? 'BẬT' : 'TẮT');
+}
+
+function addLog(type, msg) {
+  const log = document.getElementById('chatLog');
+  const now = new Date().toLocaleTimeString('vi', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const div = document.createElement('div');
+  div.className = 'chat-msg';
+  div.innerHTML = `<span class="time">${now}</span><span class="${type}">${msg}</span>`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  // Giữ tối đa 50 dòng
+  while (log.children.length > 50) log.removeChild(log.firstChild);
+}
+
+function setStatus(text, color) {
+  document.getElementById('mqttStatus').textContent = text;
+  const dot = document.getElementById('mqttDot');
+  dot.className = 'dot' + (color ? ' ' + color : '');
+}
+
+// Load saved config
+window.onload = () => {
+  const savedKey = localStorage.getItem('smarthome_apikey');
+  const savedTopic = localStorage.getItem('smarthome_topic');
+  if (savedKey) document.getElementById('apiKey').value = savedKey;
+  if (savedTopic) document.getElementById('mqttTopic').value = savedTopic;
+};
+</script>
+</body>
+</html>
