@@ -600,17 +600,24 @@ function speak(text, langCode = 'vi-VN') {
 }
 
 window.onload = () => {
-  // Kích hoạt nạp giọng nói sớm để tránh danh sách trống lúc đầu
+  // Khắc phục lỗi nạp danh sách giọng nói trễ hoặc không kích hoạt sự kiện trên Safari iOS
   if (window.speechSynthesis) {
-    window.speechSynthesis.getVoices();
-    window.speechSynthesis.onvoiceschanged = () => {
+    const showVoices = () => {
       const list = window.speechSynthesis.getVoices();
-      console.log('Loaded voices:', list.length);
-      const viNames = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi')).map(v => v.name);
-      if (viNames.length > 0) {
-        addLog('action', '🎙️ Giọng Việt tìm thấy: ' + viNames.join(', '));
+      if (list && list.length > 0) {
+        const viNames = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi')).map(v => v.name);
+        if (viNames.length > 0 && !window.hasLoggedVoices) {
+          window.hasLoggedVoices = true;
+          addLog('action', '🎙️ Giọng Việt tìm thấy: ' + viNames.join(', '));
+        }
       }
     };
+
+    // Chạy các lớp kích hoạt khác nhau
+    showVoices();
+    window.speechSynthesis.onvoiceschanged = showVoices;
+    setTimeout(showVoices, 300);
+    setTimeout(showVoices, 1000);
   }
 
   const k = localStorage.getItem('sh_groqkey') || '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';
