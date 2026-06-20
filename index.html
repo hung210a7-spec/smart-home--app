@@ -353,30 +353,33 @@ async function processWithGroq(text) {
   document.getElementById('voiceStatus').textContent = '🤖 Groq đang xử lý...';
 
   const apiKey = localStorage.getItem('sh_groqkey');
-  const prompt = `Bạn là trợ lý nhà thông minh. Hãy suy luận từ câu nói tự nhiên của người dùng để sinh ra danh sách các lệnh điều khiển và câu trả lời giọng nói tương ứng.
+  const prompt = `Bạn là trợ lý ảo nhà thông minh tên Jarvis. Bạn có 2 nhiệm vụ:
+1. Nhận diện và thực thi điều khiển thiết bị thông minh khi được yêu cầu.
+2. Trả lời các câu hỏi trò chuyện, kiến thức thông thường của người dùng một cách ngắn gọn, thông minh và thân thiện (dưới 2 câu).
 
 Thiết bị hợp lệ: light1 (đèn 1), light2 (đèn 2), fan (quạt), door (cửa), all (tất cả).
-Hành động hợp lệ: "on" (bật / mở cửa) hoặc "off" (tắt / đóng / khóa cửa).
+Hành động hợp lệ: "on" (bật/mở) hoặc "off" (tắt/đóng/khóa).
 
-Yêu cầu:
-1. Trả về JSON định dạng sau (không giải thích thêm):
+Yêu cầu trả về JSON định dạng sau (không giải thích hay thêm văn bản khác ngoài JSON):
 {
   "commands": [
     { "device": "tên_thiết_bị", "action": "hành_động" }
   ],
-  "speak": "câu_phản_hồi_nói_chuyện"
+  "speak": "câu_trả_lời_hoặc_câu_nói_phản_hồi"
 }
-2. Nếu không hiểu câu nói, hãy trả về: {"error": "không hiểu"}
-3. Hãy linh hoạt xử lý các từ nói ngọng, viết sai chính tả do bộ nhận diện giọng nói (ví dụ: "bặt", "bập", "mở", "bặc" đều hiểu là "on"; "tắp", "tát", "tắt", "tắc", "khóa" đều hiểu là "off").
-4. Ở trường "speak", hãy viết câu phản hồi ngắn gọn để trợ lý nói qua loa (Ví dụ: "Đã bật quạt", "Đang đóng cửa cho bạn").
-5. ĐẶC BIỆT: Nếu người dùng hỏi về nhiệt độ, độ ẩm hoặc thời tiết trong nhà, hãy để trường "speak" giá trị là "temp_humi" và mảng "commands" để rỗng [].
+
+Quy tắc:
+- Khi người dùng ra lệnh điều khiển: Tạo danh sách lệnh trong "commands" và phản hồi ngắn gọn trong "speak" (Ví dụ: "Đã bật quạt cho bạn").
+- Khi hỏi về nhiệt độ, độ ẩm, thời tiết trong nhà: Đặt "commands" là [] và "speak" là "temp_humi".
+- Khi người dùng trò chuyện, hỏi thông tin/kiến thức thông thường (Ví dụ: "bạn tên là gì", "thời tiết ngày mai thế nào", "kể chuyện cười đi"): Trả lời họ trực tiếp vào trường "speak" và đặt "commands" là [].
+- Hỗ trợ sửa lỗi chính tả phát âm tiếng Việt (Ví dụ: "bặt", "bặc", "mở" -> "on"; "tát", "tắc", "khóa" -> "off").
 
 Ví dụ suy luận:
+- "bạn tên là gì" → {"commands": [], "speak": "Tôi là Jarvis, trợ lý thông minh của bạn."}
+- "1 cộng 1 bằng mấy" → {"commands": [], "speak": "Dạ, 1 cộng 1 bằng 2 ạ."}
 - "bặt đèn 2 tắt đèn 1" → {"commands": [{"device":"light2","action":"on"}, {"device":"light1","action":"off"}], "speak": "Đã bật đèn 2 và tắt đèn 1"}
 - "mở cửa ra đi" → {"commands": [{"device":"door","action":"on"}], "speak": "Cửa đã được mở"}
 - "nhiệt độ phòng thế nào" → {"commands": [], "speak": "temp_humi"}
-- "bây giờ bao nhiêu độ" → {"commands": [], "speak": "temp_humi"}
-- "độ ẩm có cao không" → {"commands": [], "speak": "temp_humi"}
 - "trời nóng quá bật quạt lên" → {"commands": [{"device":"fan","action":"on"}], "speak": "Đã bật quạt cho mát"}
 - "tắt hết đi ngủ" → {"commands": [{"device":"all","action":"off"}], "speak": "Chúc ngủ ngon, tôi đang tắt tất cả thiết bị"}
 
@@ -537,7 +540,21 @@ function speak(text) {
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = 'vi-VN';
-  utterance.rate = 1.0;
+  
+  // Tăng nhẹ tốc độ đọc giúp giọng điệu trôi chảy và bớt robot hơn
+  utterance.rate = 1.05;
+  utterance.pitch = 1.0;
+  utterance.volume = 1.0;
+
+  // Ưu tiên các giọng đọc Neural tự nhiên chất lượng cao (đặc biệt từ Microsoft Edge/Google Chrome)
+  const voices = window.speechSynthesis.getVoices();
+  const targetVoice = voices.find(v => v.lang.includes('vi') && (v.name.includes('Natural') || v.name.includes('Online'))) ||
+                      voices.find(v => v.lang.includes('vi') && v.name.includes('Google')) ||
+                      voices.find(v => v.lang.includes('vi'));
+  
+  if (targetVoice) {
+    utterance.voice = targetVoice;
+  }
   window.speechSynthesis.speak(utterance);
 }
 
