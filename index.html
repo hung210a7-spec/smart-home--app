@@ -341,16 +341,18 @@ async function processWithGroq(text) {
 Thiết bị hợp lệ: light1 (đèn 1), light2 (đèn 2), fan (quạt), all (tất cả).
 Hành động hợp lệ: "on" hoặc "off".
 
-Yêu cầu trả về JSON định dạng sau (không giải thích thêm):
+Yêu cầu:
+1. Trả về JSON định dạng sau (không giải thích thêm):
 {
   "commands": [
     { "device": "tên_thiết_bị", "action": "hành_động" }
   ]
 }
-Nếu không hiểu câu nói, hãy trả về: {"error": "không hiểu"}
+2. Nếu không hiểu câu nói, hãy trả về: {"error": "không hiểu"}
+3. Hãy linh hoạt xử lý các từ nói ngọng, viết sai chính tả do bộ nhận diện giọng nói (ví dụ: "bặt", "bập", "mở", "bặc" đều hiểu là "on"; "tắp", "tát", "tắt", "tắc" đều hiểu là "off").
 
 Ví dụ suy luận:
-- "bật đèn 2 tắt đèn 1" → {"commands": [{"device":"light2","action":"on"}, {"device":"light1","action":"off"}]}
+- "bặt đèn 2 tắt đèn 1" → {"commands": [{"device":"light2","action":"on"}, {"device":"light1","action":"off"}]}
 - "trời nóng quá bật quạt lên" → {"commands": [{"device":"fan","action":"on"}]}
 - "lạnh quá tắt quạt đi" → {"commands": [{"device":"fan","action":"off"}]}
 - "tắt hết đi ngủ" → {"commands": [{"device":"all","action":"off"}]}
@@ -399,15 +401,20 @@ Câu nói của người dùng: "${text}"`;
       document.getElementById('voiceStatus').textContent = '❓ Không nhận ra lệnh';
     } else if (cmd.commands && Array.isArray(cmd.commands) && cmd.commands.length > 0) {
       let executedCount = 0;
+      let delayMs = 0;
+      
       cmd.commands.forEach(c => {
         if (c.device && c.action) {
-          const msg = getActionText(c.device, c.action);
-          addLog('action', '⚡ ' + msg);
-          sendCommand(c.device, c.action);
+          setTimeout(() => {
+            const msg = getActionText(c.device, c.action);
+            addLog('action', '⚡ ' + msg);
+            sendCommand(c.device, c.action);
+          }, delayMs);
+          delayMs += 250; // Trễ 250ms giữa mỗi lệnh gửi đi để ESP32 xử lý kịp
           executedCount++;
         }
       });
-      document.getElementById('voiceStatus').textContent = `✅ Đã thực hiện ${executedCount} lệnh`;
+      document.getElementById('voiceStatus').textContent = `✅ Đã gửi ${executedCount} lệnh`;
     } else {
       document.getElementById('voiceStatus').textContent = '❓ Không tìm thấy lệnh phù hợp';
     }
