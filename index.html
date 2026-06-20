@@ -326,8 +326,11 @@ function connect() {
   });
 }
 
-function startVoice() {
-  if (isProcessing || isListening) return;
+let mediaRecorder = null;
+let audioChunks = [];
+
+async function startVoice() {
+  if (isProcessing) return;
 
   // 1. Mở khóa âm thanh SpeechSynthesis cho Safari iOS
   if (window.speechSynthesis) {
@@ -335,47 +338,99 @@ function startVoice() {
     window.speechSynthesis.speak(u);
   }
 
-  // 2. Mở khóa âm thanh HTML5 Audio (Google TTS) cho Safari iOS
-  try {
-    const context = new (window.AudioContext || window.webkitAudioContext)();
-    if (context.state === 'suspended') {
-      context.resume();
+  const micBtn = document.getElementById('micBtn');
+
+  if (isListening) {
+    // Dừng ghi âm để kích hoạt sự kiện onstop
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
     }
-    const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-    silentAudio.play().catch(() => {});
-  } catch (e) {
-    console.log('AudioContext unlock bypass:', e);
+    isListening = false;
+    micBtn.classList.remove('listening');
+    return;
   }
 
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { alert('Dùng Chrome hoặc Edge nhé!'); return; }
-  const recognition = new SR();
-  recognition.lang = 'vi-VN';
-  recognition.interimResults = false;
-  recognition.onstart = () => {
-    isListening = true;
-    document.getElementById('micBtn').classList.add('listening');
-    document.getElementById('voiceStatus').textContent = '🔴 Đang nghe...';
-  };
-  recognition.onend = () => {
-    isListening = false;
-    if (!isProcessing) {
-      document.getElementById('micBtn').classList.remove('listening');
-      document.getElementById('voiceStatus').textContent = 'Nhấn mic để ra lệnh';
+  // 2. Bắt đầu ghi âm bằng mic
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    let mimeType = 'audio/webm';
+    if (!MediaRecorder.isTypeSupported(mimeType)) {
+      mimeType = 'audio/mp4'; // Fallback cho iOS Safari
     }
-  };
-  recognition.onerror = (e) => {
-    isListening = false;
-    document.getElementById('micBtn').classList.remove('listening');
-    document.getElementById('voiceStatus').textContent = 'Lỗi mic: ' + e.error;
-  };
-  recognition.onresult = async (e) => {
-    const text = e.results[0][0].transcript;
-    addLog('user', '🎙️ "' + text + '"');
-    document.getElementById('micBtn').classList.remove('listening');
-    await processWithGroq(text);
-  };
-  recognition.start();
+    
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream, { mimeType });
+    
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = async () => {
+      // Giải phóng micro
+      stream.getTracks().forEach(track => track.stop());
+
+      const audioBlob = new Blob(audioChunks, { type: mimeType });
+      
+      isProcessing = true;
+      micBtn.classList.add('processing');
+      document.getElementById('voiceStatus').textContent = '🤖 Đang dịch giọng nói...';
+      
+      try {
+        const text = await transcribeAudio(audioBlob, mimeType);
+        if (text && text.trim().length > 0) {
+          addLog('user', '🎙️ "' + text + '"');
+          await processWithGroq(text);
+        } else {
+          document.getElementById('voiceStatus').textContent = '❓ Không nghe rõ, hãy nhấn thử lại';
+          finish();
+        }
+      } catch (err) {
+        addLog('error', '❌ Lỗi nhận dạng: ' + err.message);
+        document.getElementById('voiceStatus').textContent = '❌ Lỗi nhận dạng';
+        finish();
+      }
+    };
+
+    mediaRecorder.start();
+    isListening = true;
+    micBtn.classList.add('listening');
+    document.getElementById('voiceStatus').textContent = '🔴 Đang nghe... Nhấn lại để hoàn tất';
+  } catch (err) {
+    alert('Không thể kết nối mic: ' + err.message);
+    console.error(err);
+  }
+}
+
+async function transcribeAudio(audioBlob, mimeType) {
+  const apiKey = localStorage.getItem('sh_groqkey');
+  if (!apiKey) throw new Error('Chưa điền API Key');
+
+  const formData = new FormData();
+  let extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+  const file = new File([audioBlob], `audio.${extension}`, { type: mimeType });
+  
+  formData.append('file', file);
+  formData.append('model', 'whisper-large-v3-turbo');
+  formData.append('language', 'vi');
+
+  const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + apiKey
+    },
+    body: formData
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error?.message || 'Lỗi API');
+  }
+
+  const data = await res.json();
+  return data.text;
 }
 
 async function processWithGroq(text) {
