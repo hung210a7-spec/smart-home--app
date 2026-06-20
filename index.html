@@ -179,8 +179,8 @@ body {
 <div class="setup-panel">
   <h3>⚙️ Cấu hình</h3>
   <div class="input-group">
-    <label>Gemini API Key</label>
-    <input type="password" id="apiKey" placeholder="AIzaSy..." />
+    <label>Groq API Key</label>
+    <input type="password" id="apiKey" placeholder="gsk_..." />
   </div>
   <div class="input-group">
     <label>Mật khẩu HiveMQ</label>
@@ -248,10 +248,10 @@ const deviceStates = { light1:false, light2:false, fan:false };
 function connect() {
   const apiKey  = document.getElementById('apiKey').value.trim();
   const mqttPass = document.getElementById('mqttPass').value.trim();
-  if (!apiKey)   { alert('Nhập Gemini API Key!'); return; }
+  if (!apiKey)   { alert('Nhập Groq API Key!'); return; }
   if (!mqttPass) { alert('Nhập mật khẩu HiveMQ!'); return; }
 
-  localStorage.setItem('sh_apikey', apiKey);
+  localStorage.setItem('sh_groqkey', apiKey);
   localStorage.setItem('sh_mqttpass', mqttPass);
   setStatus('Đang kết nối...', 'yellow');
 
@@ -325,22 +325,22 @@ function startVoice() {
     const text = e.results[0][0].transcript;
     addLog('user', '🎙️ "' + text + '"');
     document.getElementById('micBtn').classList.remove('listening');
-    await processWithGemini(text);
+    await processWithGroq(text);
   };
   recognition.start();
 }
 
-async function processWithGemini(text) {
+async function processWithGroq(text) {
   isProcessing = true;
   document.getElementById('micBtn').classList.add('processing');
-  document.getElementById('voiceStatus').textContent = '🤖 Gemini đang xử lý...';
+  document.getElementById('voiceStatus').textContent = '🤖 Groq đang xử lý...';
 
-  const apiKey = localStorage.getItem('sh_apikey');
+  const apiKey = localStorage.getItem('sh_groqkey');
   const prompt = `Bạn là trợ lý điều khiển nhà thông minh. Suy luận từ ngữ cảnh tự nhiên để ra lệnh.
 
 Thiết bị: light1 (đèn 1), light2 (đèn 2), fan (quạt), all (tất cả).
 Action: "on" hoặc "off".
-Chỉ trả về JSON thuần: {"device":"...","action":"..."} hoặc {"error":"không hiểu"}
+Chỉ trả về JSON thuần, không giải thích: {"device":"...","action":"..."} hoặc {"error":"không hiểu"}
 
 Ví dụ suy luận:
 "trời nóng quá" → {"device":"fan","action":"on"}
@@ -350,7 +350,7 @@ Ví dụ suy luận:
 "nóng chảy mỡ rồi" → {"device":"fan","action":"on"}
 "bức bối quá đi" → {"device":"fan","action":"on"}
 "lạnh quá rồi" → {"device":"fan","action":"off"}
-"rét thế tắt quạt đi" → {"device":"fan","action":"off"}
+"tắt quạt đi" → {"device":"fan","action":"off"}
 "tối quá không thấy gì" → {"device":"all","action":"on"}
 "mở đèn lên đi" → {"device":"all","action":"on"}
 "sáng phòng lên nào" → {"device":"all","action":"on"}
@@ -361,9 +361,7 @@ Ví dụ suy luận:
 "đi ngủ đây" → {"device":"all","action":"off"}
 "tắt hết đi ngủ" → {"device":"all","action":"off"}
 "ra ngoài rồi" → {"device":"all","action":"off"}
-"đi vắng một lúc" → {"device":"all","action":"off"}
 "tiết kiệm điện nào" → {"device":"all","action":"off"}
-"cúp điện hết đi" → {"device":"all","action":"off"}
 "bật đèn góc học tập" → {"device":"light1","action":"on"}
 "cần ánh sáng để đọc sách" → {"device":"light1","action":"on"}
 "đèn phòng khách bật lên" → {"device":"light2","action":"on"}
@@ -373,25 +371,29 @@ Ví dụ suy luận:
 "bật tất cả mọi thứ lên" → {"device":"all","action":"on"}
 "tắt sạch hết đi" → {"device":"all","action":"off"}
 "on the fan please" → {"device":"fan","action":"on"}
-"it's too hot in here" → {"device":"fan","action":"on"}
 "lights off" → {"device":"all","action":"off"}
 
 Câu nói của người dùng: "${text}"`;
 
   try {
     const res = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey,
+      'https://api.groq.com/openai/v1/chat/completions',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 100 }
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.1,
+          response_format: { type: "json_object" }
         })
       }
     );
     const data = await res.json();
-    console.log('Gemini raw:', JSON.stringify(data));
+    console.log('Groq raw:', JSON.stringify(data));
 
     if (data.error) {
       addLog('error', '❌ API lỗi: ' + data.error.message);
@@ -399,9 +401,9 @@ Câu nói của người dùng: "${text}"`;
       finish(); return;
     }
 
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const raw = data.choices?.[0]?.message?.content?.trim();
     if (!raw) {
-      addLog('error', '❌ Gemini không trả về text. Xem F12 Console.');
+      addLog('error', '❌ Groq không trả về nội dung.');
       finish(); return;
     }
 
@@ -482,10 +484,12 @@ function setStatus(text, color) {
 }
 
 window.onload = () => {
-  const k = localStorage.getItem('sh_apikey');
-  const p = localStorage.getItem('sh_mqttpass');
-  if (k) document.getElementById('apiKey').value = k;
-  if (p) document.getElementById('mqttPass').value = p;
+  const k = localStorage.getItem('sh_groqkey') || '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';
+  const p = localStorage.getItem('sh_mqttpass') || '15151515hungA';
+  document.getElementById('apiKey').value = k;
+  document.getElementById('mqttPass').value = p;
+  // Tự động kết nối HiveMQ
+  setTimeout(connect, 500);
 };
 </script>
 </body>
