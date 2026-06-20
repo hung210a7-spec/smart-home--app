@@ -61,6 +61,17 @@ body {
   outline:none;
 }
 .input-group input:focus { border-color:#7c3aed; }
+.input-group select {
+  width:100%;
+  background:#0f0f1a;
+  border:1px solid #2d2d5a;
+  border-radius:8px;
+  padding:8px 12px;
+  color:#e0e0e0;
+  font-size:0.88em;
+  outline:none;
+}
+.input-group select:focus { border-color:#7c3aed; }
 .btn-connect {
   width:100%;
   padding:10px;
@@ -185,6 +196,14 @@ body {
   <div class="input-group">
     <label>Mật khẩu HiveMQ</label>
     <input type="password" id="mqttPass" placeholder="Mật khẩu HiveMQ của bạn" />
+  </div>
+  <div class="input-group">
+    <label>Giọng Tiếng Việt (Vietnamese Voice)</label>
+    <select id="viVoiceSelect" onchange="saveSelectedVoices()"></select>
+  </div>
+  <div class="input-group">
+    <label>Giọng Tiếng Anh (English Voice)</label>
+    <select id="enVoiceSelect" onchange="saveSelectedVoices()"></select>
   </div>
   <button class="btn-connect" onclick="connect()">🔌 Kết nối</button>
 </div>
@@ -573,24 +592,36 @@ function speak(text, langCode = 'vi-VN') {
   utterance.pitch = 1.0;
   utterance.volume = 1.0;
 
-  // Lọc giọng đọc phù hợp với ngôn ngữ được chọn từ gói giọng nói cục bộ trên máy
   const voices = window.speechSynthesis.getVoices();
   const langPrefix = langCode.split('-')[0].toLowerCase();
   
-  const matchedVoices = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
-  console.log("Available voices for " + langPrefix + ":", matchedVoices.map(v => v.name));
+  let targetVoice = null;
 
-  const targetVoice = matchedVoices.find(v => {
-    const nameLower = v.name.toLowerCase();
-    return nameLower.includes('natural') || 
-           nameLower.includes('online') || 
-           nameLower.includes('premium') || 
-           nameLower.includes('enhanced') || 
-           nameLower.includes('siri') || 
-           nameLower.includes('nâng cao') ||
-           nameLower.includes('gọng nói') ||
-           nameLower.includes('giọng nói');
-  }) || matchedVoices.find(v => v.name.toLowerCase().includes('google')) || matchedVoices[0];
+  // 1. Kiểm tra lựa chọn thủ công từ localStorage
+  const savedViVoice = localStorage.getItem('sh_vi_voice');
+  const savedEnVoice = localStorage.getItem('sh_en_voice');
+
+  if (langPrefix === 'vi' && savedViVoice) {
+    targetVoice = voices.find(v => v.name === savedViVoice);
+  } else if (langPrefix === 'en' && savedEnVoice) {
+    targetVoice = voices.find(v => v.name === savedEnVoice);
+  }
+
+  // 2. Nếu không chọn thủ công hoặc giọng thủ công không khả dụng, tự động tìm kiếm thông minh
+  if (!targetVoice) {
+    const matchedVoices = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
+    targetVoice = matchedVoices.find(v => {
+      const nameLower = v.name.toLowerCase();
+      return nameLower.includes('natural') || 
+             nameLower.includes('online') || 
+             nameLower.includes('premium') || 
+             nameLower.includes('enhanced') || 
+             nameLower.includes('siri') || 
+             nameLower.includes('nâng cao') ||
+             nameLower.includes('gọng nói') ||
+             nameLower.includes('giọng nói');
+    }) || matchedVoices.find(v => v.name.toLowerCase().includes('google')) || matchedVoices[0];
+  }
   
   if (targetVoice) {
     utterance.voice = targetVoice;
@@ -599,12 +630,55 @@ function speak(text, langCode = 'vi-VN') {
   window.speechSynthesis.speak(utterance);
 }
 
+function populateVoiceSelectors() {
+  if (!window.speechSynthesis) return;
+  const list = window.speechSynthesis.getVoices();
+  
+  const viSelect = document.getElementById('viVoiceSelect');
+  const enSelect = document.getElementById('enVoiceSelect');
+  if (!viSelect || !enSelect) return;
+
+  const prevVi = viSelect.value || localStorage.getItem('sh_vi_voice');
+  const prevEn = enSelect.value || localStorage.getItem('sh_en_voice');
+
+  viSelect.innerHTML = '<option value="">-- Tự động chọn --</option>';
+  enSelect.innerHTML = '<option value="">-- Tự động chọn --</option>';
+
+  const viVoices = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi'));
+  const enVoices = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('en'));
+
+  viVoices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = v.name;
+    viSelect.appendChild(opt);
+  });
+
+  enVoices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = v.name;
+    enSelect.appendChild(opt);
+  });
+
+  if (prevVi) viSelect.value = prevVi;
+  if (prevEn) enSelect.value = prevEn;
+}
+
+function saveSelectedVoices() {
+  const viVal = document.getElementById('viVoiceSelect').value;
+  const enVal = document.getElementById('enVoiceSelect').value;
+  localStorage.setItem('sh_vi_voice', viVal);
+  localStorage.setItem('sh_en_voice', enVal);
+}
+
 window.onload = () => {
   // Khắc phục lỗi nạp danh sách giọng nói trễ hoặc không kích hoạt sự kiện trên Safari iOS
   if (window.speechSynthesis) {
     const showVoices = () => {
       const list = window.speechSynthesis.getVoices();
       if (list && list.length > 0) {
+        populateVoiceSelectors();
         const viNames = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi')).map(v => v.name);
         if (viNames.length > 0 && !window.hasLoggedVoices) {
           window.hasLoggedVoices = true;
