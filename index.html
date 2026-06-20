@@ -249,8 +249,6 @@ let mqttClient = null;
 let isListening = false;
 let isProcessing = false;
 const deviceStates = { light1:false, light2:false, fan:false, door:false };
-let currentTemp = null;
-let currentHumi = null;
 
 function connect() {
   const apiKey  = document.getElementById('apiKey').value.trim();
@@ -288,11 +286,9 @@ function connect() {
       if (d.light2 !== undefined) updateCard('light2', d.light2);
       if (d.fan   !== undefined) updateCard('fan',    d.fan);
       if (d.door  !== undefined) updateCard('door',   d.door);
-      if (d.temp  !== undefined) {
-        currentTemp = parseFloat(d.temp).toFixed(1);
-        currentHumi = parseFloat(d.humi).toFixed(1);
-        document.getElementById('state-temp').textContent = currentTemp + '°C / ' + currentHumi + '%';
-      }
+      if (d.temp  !== undefined)
+        document.getElementById('state-temp').textContent =
+          parseFloat(d.temp).toFixed(1) + '°C / ' + parseFloat(d.humi).toFixed(1) + '%';
     } catch(e) {}
   });
 
@@ -309,13 +305,6 @@ function connect() {
 
 function startVoice() {
   if (isProcessing || isListening) return;
-
-  // Mở khóa âm thanh (Speech Synthesis Unlock) cho trình duyệt
-  if (window.speechSynthesis) {
-    const u = new SpeechSynthesisUtterance('');
-    window.speechSynthesis.speak(u);
-  }
-
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { alert('Dùng Chrome hoặc Edge nhé!'); return; }
   const recognition = new SR();
@@ -353,35 +342,31 @@ async function processWithGroq(text) {
   document.getElementById('voiceStatus').textContent = '🤖 Groq đang xử lý...';
 
   const apiKey = localStorage.getItem('sh_groqkey');
-  const prompt = `Bạn là trợ lý ảo nhà thông minh tên Jarvis. Bạn có 2 nhiệm vụ:
-1. Nhận diện và thực thi điều khiển thiết bị thông minh khi được yêu cầu.
-2. Trả lời các câu hỏi trò chuyện, kiến thức thông thường của người dùng một cách đầy đủ, thông minh, chi tiết và thân thiện như một trợ lý AI cao cấp.
+  const prompt = `Bạn là trợ lý nhà thông minh. Hãy suy luận từ câu nói tự nhiên của người dùng để sinh ra danh sách các lệnh điều khiển tương ứng.
 
 Thiết bị hợp lệ: light1 (đèn 1), light2 (đèn 2), fan (quạt), door (cửa), all (tất cả).
-Hành động hợp lệ: "on" (bật/mở) hoặc "off" (tắt/đóng/khóa).
+Hành động hợp lệ: "on" (bật / mở cửa) hoặc "off" (tắt / đóng / khóa cửa).
 
-Yêu cầu trả về JSON định dạng sau (không giải thích hay thêm văn bản khác ngoài JSON):
+Yêu cầu:
+1. Trả về JSON định dạng sau (không giải thích thêm):
 {
   "commands": [
     { "device": "tên_thiết_bị", "action": "hành_động" }
-  ],
-  "speak": "câu_trả_lời_hoặc_câu_nói_phản_hồi"
+  ]
 }
-
-Quy tắc:
-- Khi người dùng ra lệnh điều khiển: Tạo danh sách lệnh trong "commands" và phản hồi ngắn gọn trong "speak" (Ví dụ: "Đã bật quạt cho bạn").
-- Khi hỏi về nhiệt độ, độ ẩm, thời tiết trong nhà: Đặt "commands" là [] và "speak" là "temp_humi".
-- Khi người dùng trò chuyện, hỏi thông tin/kiến thức thông thường (Ví dụ: "bạn tên là gì", "kể chuyện cười đi", "giải thích thuyết tương đối"): Hãy trả lời họ trực tiếp vào trường "speak" một cách thông minh, chi tiết, thú vị và tự nhiên, đồng thời đặt "commands" là [].
-- Hỗ trợ sửa lỗi chính tả phát âm tiếng Việt (Ví dụ: "bặt", "bặc", "mở" -> "on"; "tát", "tắc", "khóa" -> "off").
+2. Nếu không hiểu câu nói, hãy trả về: {"error": "không hiểu"}
+3. Hãy linh hoạt xử lý các từ nói ngọng, viết sai chính tả do bộ nhận diện giọng nói (ví dụ: "bặt", "bập", "mở", "bặc" đều hiểu là "on"; "tắp", "tát", "tắt", "tắc", "khóa" đều hiểu là "off").
 
 Ví dụ suy luận:
-- "bạn tên là gì" → {"commands": [], "speak": "Tôi là Jarvis, trợ lý thông minh của bạn."}
-- "1 cộng 1 bằng mấy" → {"commands": [], "speak": "Dạ, 1 cộng 1 bằng 2 ạ."}
-- "bặt đèn 2 tắt đèn 1" → {"commands": [{"device":"light2","action":"on"}, {"device":"light1","action":"off"}], "speak": "Đã bật đèn 2 và tắt đèn 1"}
-- "mở cửa ra đi" → {"commands": [{"device":"door","action":"on"}], "speak": "Cửa đã được mở"}
-- "nhiệt độ phòng thế nào" → {"commands": [], "speak": "temp_humi"}
-- "trời nóng quá bật quạt lên" → {"commands": [{"device":"fan","action":"on"}], "speak": "Đã bật quạt cho mát"}
-- "tắt hết đi ngủ" → {"commands": [{"device":"all","action":"off"}], "speak": "Chúc ngủ ngon, tôi đang tắt tất cả thiết bị"}
+- "bặt đèn 2 tắt đèn 1" → {"commands": [{"device":"light2","action":"on"}, {"device":"light1","action":"off"}]}
+- "mở cửa ra đi" → {"commands": [{"device":"door","action":"on"}]}
+- "đóng cửa lại hộ với" → {"commands": [{"device":"door","action":"off"}]}
+- "khóa cửa lại" → {"commands": [{"device":"door","action":"off"}]}
+- "tối rồi đóng cửa đi ngủ" → {"commands": [{"device":"door","action":"off"}, {"device":"all","action":"off"}]}
+- "trời nóng quá bật quạt lên" → {"commands": [{"device":"fan","action":"on"}]}
+- "lạnh quá tắt quạt đi" → {"commands": [{"device":"fan","action":"off"}]}
+- "tắt hết đi ngủ" → {"commands": [{"device":"all","action":"off"}]}
+- "bật đèn 1 và mở cửa" → {"commands": [{"device":"light1","action":"on"}, {"device":"door","action":"on"}]}
 
 Câu nói của người dùng: "${text}"`;
 
@@ -423,41 +408,24 @@ Câu nói của người dùng: "${text}"`;
     if (cmd.error) {
       addLog('error', '❓ ' + cmd.error);
       document.getElementById('voiceStatus').textContent = '❓ Không nhận ra lệnh';
-      speak("Tôi không hiểu câu lệnh này.");
-    } else {
+    } else if (cmd.commands && Array.isArray(cmd.commands) && cmd.commands.length > 0) {
       let executedCount = 0;
       let delayMs = 0;
-
-      if (cmd.commands && Array.isArray(cmd.commands)) {
-        cmd.commands.forEach(c => {
-          if (c.device && c.action) {
-            setTimeout(() => {
-              const msg = getActionText(c.device, c.action);
-              addLog('action', '⚡ ' + msg);
-              sendCommand(c.device, c.action);
-            }, delayMs);
-            delayMs += 250;
-            executedCount++;
-          }
-        });
-      }
-
-      // Xử lý phản hồi giọng nói (TTS)
-      let speakText = cmd.speak;
-      if (speakText) {
-        if (speakText === 'temp_humi') {
-          if (currentTemp !== null && currentHumi !== null) {
-            speakText = `Nhiệt độ trong nhà hiện tại là ${currentTemp} độ C, và độ ẩm là ${currentHumi} phần trăm.`;
-          } else {
-            speakText = "Hiện tại tôi chưa nhận được dữ liệu cảm biến từ thiết bị.";
-          }
+      
+      cmd.commands.forEach(c => {
+        if (c.device && c.action) {
+          setTimeout(() => {
+            const msg = getActionText(c.device, c.action);
+            addLog('action', '⚡ ' + msg);
+            sendCommand(c.device, c.action);
+          }, delayMs);
+          delayMs += 250; // Trễ 250ms giữa mỗi lệnh gửi đi để ESP32 xử lý kịp
+          executedCount++;
         }
-        addLog('ai', '🗣️ ' + speakText);
-        speak(speakText);
-        document.getElementById('voiceStatus').textContent = speakText;
-      } else if (executedCount > 0) {
-        document.getElementById('voiceStatus').textContent = `✅ Đã gửi ${executedCount} lệnh`;
-      }
+      });
+      document.getElementById('voiceStatus').textContent = `✅ Đã gửi ${executedCount} lệnh`;
+    } else {
+      document.getElementById('voiceStatus').textContent = '❓ Không tìm thấy lệnh phù hợp';
     }
   } catch(err) {
     addLog('error', '❌ ' + err.message);
@@ -529,43 +497,8 @@ function addLog(type, msg) {
 }
 
 function setStatus(text, color) {
-  const dot    = document.getElementById('mqttDot');
-  const status = document.getElementById('mqttStatus');
-  status.textContent = text;
-  dot.className = 'dot ' + (color || '');
-}
-
-function speak(text) {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  
-  // Chuẩn hóa văn bản trước khi đọc để sửa lỗi giọng đọc robot buồn cười (ví dụ: độ C -> độ, % -> phần trăm, 1/2 -> một/hai)
-  let cleanText = text
-    .replace(/ độ C/gi, ' độ')
-    .replace(/°C/gi, ' độ')
-    .replace(/%/g, ' phần trăm')
-    .replace(/\bC\b/g, 'xê')
-    .replace(/\b(đèn|quạt|cửa) 1\b/gi, '$1 một')
-    .replace(/\b(đèn|quạt|cửa) 2\b/gi, '$1 hai');
-
-  const utterance = new SpeechSynthesisUtterance(cleanText);
-  utterance.lang = 'vi-VN';
-  
-  // Tăng nhẹ tốc độ đọc giúp giọng điệu trôi chảy và bớt robot hơn
-  utterance.rate = 1.05;
-  utterance.pitch = 1.0;
-  utterance.volume = 1.0;
-
-  // Ưu tiên các giọng đọc Neural tự nhiên chất lượng cao (đặc biệt từ Microsoft Edge/Google Chrome)
-  const voices = window.speechSynthesis.getVoices();
-  const targetVoice = voices.find(v => v.lang.includes('vi') && (v.name.includes('Natural') || v.name.includes('Online'))) ||
-                      voices.find(v => v.lang.includes('vi') && v.name.includes('Google')) ||
-                      voices.find(v => v.lang.includes('vi'));
-  
-  if (targetVoice) {
-    utterance.voice = targetVoice;
-  }
-  window.speechSynthesis.speak(utterance);
+  document.getElementById('mqttStatus').textContent = text;
+  document.getElementById('mqttDot').className = 'dot' + (color ? ' ' + color : '');
 }
 
 window.onload = () => {
