@@ -577,9 +577,20 @@ function speak(text, langCode = 'vi-VN') {
   const voices = window.speechSynthesis.getVoices();
   const langPrefix = langCode.split('-')[0].toLowerCase();
   
-  const targetVoice = voices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix) && (v.name.includes('Natural') || v.name.includes('Online'))) ||
-                      voices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix) && v.name.includes('Google')) ||
-                      voices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
+  const matchedVoices = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
+  console.log("Available voices for " + langPrefix + ":", matchedVoices.map(v => v.name));
+
+  const targetVoice = matchedVoices.find(v => {
+    const nameLower = v.name.toLowerCase();
+    return nameLower.includes('natural') || 
+           nameLower.includes('online') || 
+           nameLower.includes('premium') || 
+           nameLower.includes('enhanced') || 
+           nameLower.includes('siri') || 
+           nameLower.includes('nâng cao') ||
+           nameLower.includes('gọng nói') ||
+           nameLower.includes('giọng nói');
+  }) || matchedVoices.find(v => v.name.toLowerCase().includes('google')) || matchedVoices[0];
   
   if (targetVoice) {
     utterance.voice = targetVoice;
@@ -593,7 +604,12 @@ window.onload = () => {
   if (window.speechSynthesis) {
     window.speechSynthesis.getVoices();
     window.speechSynthesis.onvoiceschanged = () => {
-      console.log('Loaded voices:', window.speechSynthesis.getVoices().length);
+      const list = window.speechSynthesis.getVoices();
+      console.log('Loaded voices:', list.length);
+      const viNames = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi')).map(v => v.name);
+      if (viNames.length > 0) {
+        addLog('action', '🎙️ Giọng Việt tìm thấy: ' + viNames.join(', '));
+      }
     };
   }
 
