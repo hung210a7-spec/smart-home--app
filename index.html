@@ -215,6 +215,11 @@ body {
     <div class="name">Quạt</div>
     <div class="state" id="state-fan">Tắt</div>
   </div>
+  <div class="device-card" id="card-door" onclick="manualToggle('door')">
+    <div class="icon">🚪</div>
+    <div class="name">Cửa</div>
+    <div class="state" id="state-door">Đóng</div>
+  </div>
   <div class="device-card" style="cursor:default;">
     <div class="icon">🌡️</div>
     <div class="name">Cảm biến</div>
@@ -243,7 +248,9 @@ const MQTT_STATUS   = 'smarthome/nhacuatoi/status';
 let mqttClient = null;
 let isListening = false;
 let isProcessing = false;
-const deviceStates = { light1:false, light2:false, fan:false };
+const deviceStates = { light1:false, light2:false, fan:false, door:false };
+let currentTemp = null;
+let currentHumi = null;
 
 function connect() {
   const apiKey  = document.getElementById('apiKey').value.trim();
@@ -280,9 +287,12 @@ function connect() {
       if (d.light1 !== undefined) updateCard('light1', d.light1);
       if (d.light2 !== undefined) updateCard('light2', d.light2);
       if (d.fan   !== undefined) updateCard('fan',    d.fan);
-      if (d.temp  !== undefined)
-        document.getElementById('state-temp').textContent =
-          parseFloat(d.temp).toFixed(1) + '°C / ' + parseFloat(d.humi).toFixed(1) + '%';
+      if (d.door  !== undefined) updateCard('door',   d.door);
+      if (d.temp  !== undefined) {
+        currentTemp = parseFloat(d.temp).toFixed(1);
+        currentHumi = parseFloat(d.humi).toFixed(1);
+        document.getElementById('state-temp').textContent = currentTemp + '°C / ' + currentHumi + '%';
+      }
     } catch(e) {}
   });
 
@@ -336,28 +346,32 @@ async function processWithGroq(text) {
   document.getElementById('voiceStatus').textContent = '🤖 Groq đang xử lý...';
 
   const apiKey = localStorage.getItem('sh_groqkey');
-  const prompt = `Bạn là trợ lý nhà thông minh. Hãy suy luận từ câu nói tự nhiên của người dùng để sinh ra danh sách các lệnh điều khiển tương ứng.
+  const prompt = `Bạn là trợ lý nhà thông minh. Hãy suy luận từ câu nói tự nhiên của người dùng để sinh ra danh sách các lệnh điều khiển và câu trả lời giọng nói tương ứng.
 
-Thiết bị hợp lệ: light1 (đèn 1), light2 (đèn 2), fan (quạt), all (tất cả).
-Hành động hợp lệ: "on" hoặc "off".
+Thiết bị hợp lệ: light1 (đèn 1), light2 (đèn 2), fan (quạt), door (cửa), all (tất cả).
+Hành động hợp lệ: "on" (bật / mở cửa) hoặc "off" (tắt / đóng / khóa cửa).
 
 Yêu cầu:
 1. Trả về JSON định dạng sau (không giải thích thêm):
 {
   "commands": [
     { "device": "tên_thiết_bị", "action": "hành_động" }
-  ]
+  ],
+  "speak": "câu_phản_hồi_nói_chuyện"
 }
 2. Nếu không hiểu câu nói, hãy trả về: {"error": "không hiểu"}
-3. Hãy linh hoạt xử lý các từ nói ngọng, viết sai chính tả do bộ nhận diện giọng nói (ví dụ: "bặt", "bập", "mở", "bặc" đều hiểu là "on"; "tắp", "tát", "tắt", "tắc" đều hiểu là "off").
+3. Hãy linh hoạt xử lý các từ nói ngọng, viết sai chính tả do bộ nhận diện giọng nói (ví dụ: "bặt", "bập", "mở", "bặc" đều hiểu là "on"; "tắp", "tát", "tắt", "tắc", "khóa" đều hiểu là "off").
+4. Ở trường "speak", hãy viết câu phản hồi ngắn gọn để trợ lý nói qua loa (Ví dụ: "Đã bật quạt", "Đang đóng cửa cho bạn").
+5. ĐẶC BIỆT: Nếu người dùng hỏi về nhiệt độ, độ ẩm hoặc thời tiết trong nhà, hãy để trường "speak" giá trị là "temp_humi" và mảng "commands" để rỗng [].
 
 Ví dụ suy luận:
-- "bặt đèn 2 tắt đèn 1" → {"commands": [{"device":"light2","action":"on"}, {"device":"light1","action":"off"}]}
-- "trời nóng quá bật quạt lên" → {"commands": [{"device":"fan","action":"on"}]}
-- "lạnh quá tắt quạt đi" → {"commands": [{"device":"fan","action":"off"}]}
-- "tắt hết đi ngủ" → {"commands": [{"device":"all","action":"off"}]}
-- "bật đèn 1 và quạt" → {"commands": [{"device":"light1","action":"on"}, {"device":"fan","action":"on"}]}
-- "tối quá bật hết lên" → {"commands": [{"device":"all","action":"on"}]}
+- "bặt đèn 2 tắt đèn 1" → {"commands": [{"device":"light2","action":"on"}, {"device":"light1","action":"off"}], "speak": "Đã bật đèn 2 và tắt đèn 1"}
+- "mở cửa ra đi" → {"commands": [{"device":"door","action":"on"}], "speak": "Cửa đã được mở"}
+- "nhiệt độ phòng thế nào" → {"commands": [], "speak": "temp_humi"}
+- "bây giờ bao nhiêu độ" → {"commands": [], "speak": "temp_humi"}
+- "độ ẩm có cao không" → {"commands": [], "speak": "temp_humi"}
+- "trời nóng quá bật quạt lên" → {"commands": [{"device":"fan","action":"on"}], "speak": "Đã bật quạt cho mát"}
+- "tắt hết đi ngủ" → {"commands": [{"device":"all","action":"off"}], "speak": "Chúc ngủ ngon, tôi đang tắt tất cả thiết bị"}
 
 Câu nói của người dùng: "${text}"`;
 
@@ -399,24 +413,41 @@ Câu nói của người dùng: "${text}"`;
     if (cmd.error) {
       addLog('error', '❓ ' + cmd.error);
       document.getElementById('voiceStatus').textContent = '❓ Không nhận ra lệnh';
-    } else if (cmd.commands && Array.isArray(cmd.commands) && cmd.commands.length > 0) {
+      speak("Tôi không hiểu câu lệnh này.");
+    } else {
       let executedCount = 0;
       let delayMs = 0;
-      
-      cmd.commands.forEach(c => {
-        if (c.device && c.action) {
-          setTimeout(() => {
-            const msg = getActionText(c.device, c.action);
-            addLog('action', '⚡ ' + msg);
-            sendCommand(c.device, c.action);
-          }, delayMs);
-          delayMs += 250; // Trễ 250ms giữa mỗi lệnh gửi đi để ESP32 xử lý kịp
-          executedCount++;
+
+      if (cmd.commands && Array.isArray(cmd.commands)) {
+        cmd.commands.forEach(c => {
+          if (c.device && c.action) {
+            setTimeout(() => {
+              const msg = getActionText(c.device, c.action);
+              addLog('action', '⚡ ' + msg);
+              sendCommand(c.device, c.action);
+            }, delayMs);
+            delayMs += 250;
+            executedCount++;
+          }
+        });
+      }
+
+      // Xử lý phản hồi giọng nói (TTS)
+      let speakText = cmd.speak;
+      if (speakText) {
+        if (speakText === 'temp_humi') {
+          if (currentTemp !== null && currentHumi !== null) {
+            speakText = `Nhiệt độ trong nhà hiện tại là ${currentTemp} độ C, và độ ẩm là ${currentHumi} phần trăm.`;
+          } else {
+            speakText = "Hiện tại tôi chưa nhận được dữ liệu cảm biến từ thiết bị.";
+          }
         }
-      });
-      document.getElementById('voiceStatus').textContent = `✅ Đã gửi ${executedCount} lệnh`;
-    } else {
-      document.getElementById('voiceStatus').textContent = '❓ Không tìm thấy lệnh phù hợp';
+        addLog('ai', '🗣️ ' + speakText);
+        speak(speakText);
+        document.getElementById('voiceStatus').textContent = speakText;
+      } else if (executedCount > 0) {
+        document.getElementById('voiceStatus').textContent = `✅ Đã gửi ${executedCount} lệnh`;
+      }
     }
   } catch(err) {
     addLog('error', '❌ ' + err.message);
@@ -458,12 +489,22 @@ function updateCard(device, isOn) {
   const state = document.getElementById('state-' + device);
   if (!card) return;
   card.className    = 'device-card' + (isOn ? ' on' : '');
-  state.textContent = isOn ? 'Bật' : 'Tắt';
+  if (device === 'door') {
+    state.textContent = isOn ? 'Mở' : 'Đóng';
+  } else {
+    state.textContent = isOn ? 'Bật' : 'Tắt';
+  }
 }
 
 function getActionText(device, action) {
-  const names = { light1:'Đèn 1', light2:'Đèn 2', fan:'Quạt', all:'Tất cả' };
-  return (names[device] || device) + ' → ' + (action === 'on' ? 'BẬT ✓' : 'TẮT ✓');
+  const names = { light1:'Đèn 1', light2:'Đèn 2', fan:'Quạt', door:'Cửa', all:'Tất cả' };
+  let actStr = '';
+  if (device === 'door') {
+    actStr = action === 'on' ? 'MỞ ✓' : 'ĐÓNG ✓';
+  } else {
+    actStr = action === 'on' ? 'BẬT ✓' : 'TẮT ✓';
+  }
+  return (names[device] || device) + ' → ' + actStr;
 }
 
 function addLog(type, msg) {
@@ -478,8 +519,19 @@ function addLog(type, msg) {
 }
 
 function setStatus(text, color) {
-  document.getElementById('mqttStatus').textContent = text;
-  document.getElementById('mqttDot').className = 'dot' + (color ? ' ' + color : '');
+  const dot    = document.getElementById('mqttDot');
+  const status = document.getElementById('mqttStatus');
+  status.textContent = text;
+  dot.className = 'dot ' + (color || '');
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'vi-VN';
+  utterance.rate = 1.0;
+  window.speechSynthesis.speak(utterance);
 }
 
 window.onload = () => {
