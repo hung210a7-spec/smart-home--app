@@ -766,12 +766,15 @@ window.onload = () => {
     setTimeout(showVoices, 1000);
   }
 
-  const k = localStorage.getItem('sh_groqkey') || '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';
-  const p = localStorage.getItem('sh_mqttpass') || '15151515hungA';
+  const k = localStorage.getItem('sh_groqkey') || '';
+  const p = localStorage.getItem('sh_mqttpass') || '';
   document.getElementById('apiKey').value = k;
   document.getElementById('mqttPass').value = p;
-  // Tự động kết nối HiveMQ
-  setTimeout(connect, 500);
+  
+  // Chỉ tự động kết nối HiveMQ nếu đã lưu cấu hình trước đó trong trình duyệt
+  if (k && p) {
+    setTimeout(connect, 500);
+  }
 };
 </script>
 </body>
