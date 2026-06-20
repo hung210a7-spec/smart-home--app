@@ -636,7 +636,24 @@ function speak(text, langCode = 'vi-VN') {
       .replace(/%/g, ' phần trăm')
       .replace(/\bC\b/g, 'xê')
       .replace(/\b(đèn|quạt|cửa) 1\b/gi, '$1 một')
-      .replace(/\b(đèn|quạt|cửa) 2\b/gi, '$1 hai');
+      .replace(/\b(đèn|quạt|cửa) 2\b/gi, '$1 hai')
+      
+      // Phiên âm từ tiếng Anh thông dụng sang tiếng Việt để giọng đọc vi-VN không bị ngọng
+      .replace(/\bjarvis\b/gi, 'Gia vít')
+      .replace(/\bapi\b/gi, 'A P I')
+      .replace(/\bgroq\b/gi, 'Gờ rốc')
+      .replace(/\bllama\b/gi, 'La ma')
+      .replace(/\bmqtt\b/gi, 'Mờ Quy Tê Tê')
+      .replace(/\bhivemq\b/gi, 'Hai vờ Mờ Quy')
+      .replace(/\bsmart\s*home\b/gi, 'Nhà thông minh')
+      .replace(/\bsmart\b/gi, 'thông minh')
+      .replace(/\bon\b/gi, 'bật')
+      .replace(/\boff\b/gi, 'tắt')
+      .replace(/\bled\b/gi, 'lét')
+      .replace(/\besp32\b/gi, 'E ét pê ba hai')
+      .replace(/\besp\b/gi, 'E ét pê')
+      .replace(/\bwifi\b/gi, 'Quai phai')
+      .replace(/\bwi-fi\b/gi, 'Quai phai');
   }
 
   const utterance = new SpeechSynthesisUtterance(cleanText);
