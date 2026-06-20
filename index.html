@@ -183,8 +183,8 @@ body {
     <input type="password" id="apiKey" placeholder="AIzaSy..." />
   </div>
   <div class="input-group">
-    <label>MQTT Topic (phải giống hệt với ESP32)</label>
-    <input type="text" id="mqttTopic" value="smarthome/nhacuatoi/cmd" />
+    <label>Mật khẩu HiveMQ</label>
+    <input type="password" id="mqttPass" placeholder="Mật khẩu HiveMQ của bạn" />
   </div>
   <button class="btn-connect" onclick="connect()">🔌 Kết nối</button>
 </div>
@@ -224,44 +224,54 @@ body {
 
 <div class="commands-hint">
   <h3>📋 Lệnh mẫu</h3>
-  <div class="cmd">• <span>"bật đèn một"</span> / <span>"tắt đèn hai"</span></div>
-  <div class="cmd">• <span>"bật quạt"</span> / <span>"tắt quạt"</span></div>
-  <div class="cmd">• <span>"bật tất cả"</span> / <span>"tắt hết đi"</span></div>
-  <div class="cmd">• <span>"trời nóng quá"</span> → Gemini tự hiểu bật quạt</div>
-  <div class="cmd">• <span>"turn on the lights"</span></div>
+  <div class="cmd">• <span>"trời nóng quá"</span> / <span>"oi bức thế"</span></div>
+  <div class="cmd">• <span>"bật đèn lên"</span> / <span>"tắt hết đi"</span></div>
+  <div class="cmd">• <span>"đi ngủ đây"</span> / <span>"về nhà rồi"</span></div>
+  <div class="cmd">• <span>"tối quá"</span> / <span>"chói mắt quá"</span></div>
+  <div class="cmd">• <span>"turn on the fan"</span> / <span>"lights off"</span></div>
 </div>
 
 <script>
+// ===== CẤU HÌNH CỐ ĐỊNH =====
+const MQTT_HOST     = 'b5ce82cad41c4f209a7ecb3409f688c9.s1.eu.hivemq.cloud';
+const MQTT_PORT     = 8884;
+const MQTT_USER     = 'hung210a7';
+const MQTT_TOPIC    = 'smarthome/nhacuatoi/cmd';
+const MQTT_STATUS   = 'smarthome/nhacuatoi/status';
+// =============================
+
 let mqttClient = null;
 let isListening = false;
 let isProcessing = false;
-let mqttTopic = '';
 const deviceStates = { light1:false, light2:false, fan:false };
 
-// ===== MQTT =====
 function connect() {
-  const apiKey = document.getElementById('apiKey').value.trim();
-  mqttTopic    = document.getElementById('mqttTopic').value.trim();
-  if (!apiKey)    { alert('Nhập Gemini API Key!'); return; }
-  if (!mqttTopic) { alert('Nhập MQTT Topic!'); return; }
+  const apiKey  = document.getElementById('apiKey').value.trim();
+  const mqttPass = document.getElementById('mqttPass').value.trim();
+  if (!apiKey)   { alert('Nhập Gemini API Key!'); return; }
+  if (!mqttPass) { alert('Nhập mật khẩu HiveMQ!'); return; }
+
   localStorage.setItem('sh_apikey', apiKey);
-  localStorage.setItem('sh_topic',  mqttTopic);
-  setStatus('Đang kết nối MQTT...', 'yellow');
+  localStorage.setItem('sh_mqttpass', mqttPass);
+  setStatus('Đang kết nối...', 'yellow');
 
   if (mqttClient) { mqttClient.end(true); mqttClient = null; }
 
   const clientId = 'webapp_' + Math.random().toString(16).slice(2,8);
-  mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
-    clientId, clean: true, reconnectPeriod: 3000,
+  mqttClient = mqtt.connect('wss://' + MQTT_HOST + ':' + MQTT_PORT + '/mqtt', {
+    clientId,
+    username: MQTT_USER,
+    password: mqttPass,
+    clean: true,
+    reconnectPeriod: 5000,
   });
 
   mqttClient.on('connect', () => {
     setStatus('Đã kết nối ✓', 'green');
     document.getElementById('micBtn').disabled = false;
     document.getElementById('voiceStatus').textContent = 'Nhấn mic để ra lệnh';
-    const statusTopic = mqttTopic.replace('/cmd', '/status');
-    mqttClient.subscribe(statusTopic);
-    addLog('ai', '✅ Đã kết nối MQTT. Sẵn sàng!');
+    mqttClient.subscribe(MQTT_STATUS);
+    addLog('ai', '✅ Kết nối HiveMQ Cloud thành công!');
   });
 
   mqttClient.on('message', (topic, message) => {
@@ -270,35 +280,30 @@ function connect() {
       if (d.light1 !== undefined) updateCard('light1', d.light1);
       if (d.light2 !== undefined) updateCard('light2', d.light2);
       if (d.fan   !== undefined) updateCard('fan',    d.fan);
-      if (d.temp  !== undefined) {
+      if (d.temp  !== undefined)
         document.getElementById('state-temp').textContent =
           parseFloat(d.temp).toFixed(1) + '°C / ' + parseFloat(d.humi).toFixed(1) + '%';
-      }
     } catch(e) {}
   });
 
   mqttClient.on('error', (err) => {
-    setStatus('Lỗi kết nối', '');
-    addLog('error', 'MQTT lỗi: ' + err.message);
+    setStatus('Lỗi: ' + err.message, '');
+    addLog('error', '❌ ' + err.message);
   });
 
   mqttClient.on('offline', () => {
-    setStatus('Mất kết nối...', 'yellow');
+    setStatus('Mất kết nối - đang kết nối lại...', 'yellow');
     document.getElementById('micBtn').disabled = true;
-    document.getElementById('voiceStatus').textContent = 'Đang kết nối lại...';
   });
 }
 
-// ===== VOICE =====
 function startVoice() {
   if (isProcessing || isListening) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { alert('Dùng Chrome hoặc Edge nhé!'); return; }
-
   const recognition = new SR();
   recognition.lang = 'vi-VN';
   recognition.interimResults = false;
-
   recognition.onstart = () => {
     isListening = true;
     document.getElementById('micBtn').classList.add('listening');
@@ -325,32 +330,13 @@ function startVoice() {
   recognition.start();
 }
 
-// ===== GEMINI =====
 async function processWithGemini(text) {
   isProcessing = true;
   document.getElementById('micBtn').classList.add('processing');
   document.getElementById('voiceStatus').textContent = '🤖 Gemini đang xử lý...';
 
   const apiKey = localStorage.getItem('sh_apikey');
-  const prompt = `Bạn là một AI chuyên gia điều khiển nhà thông minh (Smart Home Controller). 
-Nhiệm vụ của bạn là phân tích ngôn ngữ tự nhiên của người dùng và chuyển đổi thành hành động cụ thể cho các thiết bị trong nhà.
-
-### QUY TẮC CẦN TUÂN THỦ:
-1. LUÔN LUÔN trả về JSON thuần (không kèm markdown, không giải thích).
-2. Nếu câu nói mơ hồ hoặc không liên quan đến điều khiển thiết bị, hãy trả về {"error": "không hiểu"}.
-3. Nếu người dùng muốn bật/tắt nhiều thiết bị cùng lúc, hãy ưu tiên các lệnh hợp lý.
-4. Luôn suy luận dựa trên ngữ cảnh (Ví dụ: "nóng quá" -> bật quạt).
-
-### DANH SÁCH THIẾT BỊ VÀ HÀNH ĐỘNG:
-- Thiết bị: "light1", "light2", "fan", "all".
-- Hành động: "on", "off".
-
-### CẤU TRÚC ĐẦU RA JSON:
-{"device": "tên_thiết_bị", "action": "hành_động"}
-
-
-### ĐẦU VÀO CỦA NGƯỜI DÙNG:
-"{user_input}"
+  const prompt = `Bạn là trợ lý điều khiển nhà thông minh. Suy luận từ ngữ cảnh tự nhiên để ra lệnh.
 
 Thiết bị: light1 (đèn 1), light2 (đèn 2), fan (quạt), all (tất cả).
 Action: "on" hoặc "off".
@@ -392,8 +378,6 @@ Ví dụ suy luận:
 
 Câu nói của người dùng: "${text}"`;
 
-Lệnh người dùng: "${text}"`;
-
   try {
     const res = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=' + apiKey,
@@ -406,11 +390,9 @@ Lệnh người dùng: "${text}"`;
         })
       }
     );
-
     const data = await res.json();
-    console.log('Gemini raw response:', JSON.stringify(data));
+    console.log('Gemini raw:', JSON.stringify(data));
 
-    // Kiểm tra lỗi API trả về
     if (data.error) {
       addLog('error', '❌ API lỗi: ' + data.error.message);
       document.getElementById('voiceStatus').textContent = '❌ ' + data.error.message;
@@ -419,7 +401,7 @@ Lệnh người dùng: "${text}"`;
 
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!raw) {
-      addLog('error', '❌ Gemini không trả về text. Xem F12 Console để debug.');
+      addLog('error', '❌ Gemini không trả về text. Xem F12 Console.');
       finish(); return;
     }
 
@@ -435,12 +417,10 @@ Lệnh người dùng: "${text}"`;
       sendCommand(cmd.device, cmd.action);
       document.getElementById('voiceStatus').textContent = '✅ ' + msg;
     }
-
-  } catch (err) {
+  } catch(err) {
     addLog('error', '❌ ' + err.message);
     document.getElementById('voiceStatus').textContent = '❌ Lỗi xử lý';
   }
-
   finish();
 }
 
@@ -453,12 +433,11 @@ function finish() {
   }, 3000);
 }
 
-// ===== MQTT PUBLISH =====
 function sendCommand(device, action) {
   if (!mqttClient || !mqttClient.connected) {
     addLog('error', '❌ MQTT chưa kết nối!'); return;
   }
-  mqttClient.publish(mqttTopic, JSON.stringify({ device, action }), { qos:1 });
+  mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device, action }), { qos:1 });
   if (device === 'all') {
     ['light1','light2','fan'].forEach(d => updateCard(d, action === 'on'));
   } else {
@@ -472,13 +451,12 @@ function manualToggle(device) {
   addLog('action', '👆 ' + getActionText(device, newState ? 'on' : 'off'));
 }
 
-// ===== UI =====
 function updateCard(device, isOn) {
   deviceStates[device] = isOn;
   const card  = document.getElementById('card-'  + device);
   const state = document.getElementById('state-' + device);
   if (!card) return;
-  card.className  = 'device-card' + (isOn ? ' on' : '');
+  card.className    = 'device-card' + (isOn ? ' on' : '');
   state.textContent = isOn ? 'Bật' : 'Tắt';
 }
 
@@ -503,12 +481,11 @@ function setStatus(text, color) {
   document.getElementById('mqttDot').className = 'dot' + (color ? ' ' + color : '');
 }
 
-// Load saved config
 window.onload = () => {
   const k = localStorage.getItem('sh_apikey');
-  const t = localStorage.getItem('sh_topic');
+  const p = localStorage.getItem('sh_mqttpass');
   if (k) document.getElementById('apiKey').value = k;
-  if (t) document.getElementById('mqttTopic').value = t;
+  if (p) document.getElementById('mqttPass').value = p;
 };
 </script>
 </body>
