@@ -309,6 +309,13 @@ function connect() {
 
 function startVoice() {
   if (isProcessing || isListening) return;
+
+  // Mở khóa âm thanh (Speech Synthesis Unlock) cho trình duyệt
+  if (window.speechSynthesis) {
+    const u = new SpeechSynthesisUtterance('');
+    window.speechSynthesis.speak(u);
+  }
+
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { alert('Dùng Chrome hoặc Edge nhé!'); return; }
   const recognition = new SR();
