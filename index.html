@@ -336,42 +336,26 @@ async function processWithGroq(text) {
   document.getElementById('voiceStatus').textContent = '🤖 Groq đang xử lý...';
 
   const apiKey = localStorage.getItem('sh_groqkey');
-  const prompt = `Bạn là trợ lý điều khiển nhà thông minh. Suy luận từ ngữ cảnh tự nhiên để ra lệnh.
+  const prompt = `Bạn là trợ lý nhà thông minh. Hãy suy luận từ câu nói tự nhiên của người dùng để sinh ra danh sách các lệnh điều khiển tương ứng.
 
-Thiết bị: light1 (đèn 1), light2 (đèn 2), fan (quạt), all (tất cả).
-Action: "on" hoặc "off".
-Chỉ trả về JSON thuần, không giải thích: {"device":"...","action":"..."} hoặc {"error":"không hiểu"}
+Thiết bị hợp lệ: light1 (đèn 1), light2 (đèn 2), fan (quạt), all (tất cả).
+Hành động hợp lệ: "on" hoặc "off".
+
+Yêu cầu trả về JSON định dạng sau (không giải thích thêm):
+{
+  "commands": [
+    { "device": "tên_thiết_bị", "action": "hành_động" }
+  ]
+}
+Nếu không hiểu câu nói, hãy trả về: {"error": "không hiểu"}
 
 Ví dụ suy luận:
-"trời nóng quá" → {"device":"fan","action":"on"}
-"oi bức thế này" → {"device":"fan","action":"on"}
-"hầm hập khó chịu" → {"device":"fan","action":"on"}
-"mồ hôi nhễ nhại" → {"device":"fan","action":"on"}
-"nóng chảy mỡ rồi" → {"device":"fan","action":"on"}
-"bức bối quá đi" → {"device":"fan","action":"on"}
-"lạnh quá rồi" → {"device":"fan","action":"off"}
-"tắt quạt đi" → {"device":"fan","action":"off"}
-"tối quá không thấy gì" → {"device":"all","action":"on"}
-"mở đèn lên đi" → {"device":"all","action":"on"}
-"sáng phòng lên nào" → {"device":"all","action":"on"}
-"về nhà rồi" → {"device":"all","action":"on"}
-"cho sáng cái nào" → {"device":"all","action":"on"}
-"chói mắt quá" → {"device":"all","action":"off"}
-"sáng quá ngủ không được" → {"device":"all","action":"off"}
-"đi ngủ đây" → {"device":"all","action":"off"}
-"tắt hết đi ngủ" → {"device":"all","action":"off"}
-"ra ngoài rồi" → {"device":"all","action":"off"}
-"tiết kiệm điện nào" → {"device":"all","action":"off"}
-"bật đèn góc học tập" → {"device":"light1","action":"on"}
-"cần ánh sáng để đọc sách" → {"device":"light1","action":"on"}
-"đèn phòng khách bật lên" → {"device":"light2","action":"on"}
-"tắt đèn phòng ngủ" → {"device":"light1","action":"off"}
-"phòng khách tắt đèn đi" → {"device":"light2","action":"off"}
-"xem phim tắt đèn 2 đi" → {"device":"light2","action":"off"}
-"bật tất cả mọi thứ lên" → {"device":"all","action":"on"}
-"tắt sạch hết đi" → {"device":"all","action":"off"}
-"on the fan please" → {"device":"fan","action":"on"}
-"lights off" → {"device":"all","action":"off"}
+- "bật đèn 2 tắt đèn 1" → {"commands": [{"device":"light2","action":"on"}, {"device":"light1","action":"off"}]}
+- "trời nóng quá bật quạt lên" → {"commands": [{"device":"fan","action":"on"}]}
+- "lạnh quá tắt quạt đi" → {"commands": [{"device":"fan","action":"off"}]}
+- "tắt hết đi ngủ" → {"commands": [{"device":"all","action":"off"}]}
+- "bật đèn 1 và quạt" → {"commands": [{"device":"light1","action":"on"}, {"device":"fan","action":"on"}]}
+- "tối quá bật hết lên" → {"commands": [{"device":"all","action":"on"}]}
 
 Câu nói của người dùng: "${text}"`;
 
@@ -413,11 +397,19 @@ Câu nói của người dùng: "${text}"`;
     if (cmd.error) {
       addLog('error', '❓ ' + cmd.error);
       document.getElementById('voiceStatus').textContent = '❓ Không nhận ra lệnh';
+    } else if (cmd.commands && Array.isArray(cmd.commands) && cmd.commands.length > 0) {
+      let executedCount = 0;
+      cmd.commands.forEach(c => {
+        if (c.device && c.action) {
+          const msg = getActionText(c.device, c.action);
+          addLog('action', '⚡ ' + msg);
+          sendCommand(c.device, c.action);
+          executedCount++;
+        }
+      });
+      document.getElementById('voiceStatus').textContent = `✅ Đã thực hiện ${executedCount} lệnh`;
     } else {
-      const msg = getActionText(cmd.device, cmd.action);
-      addLog('action', '⚡ ' + msg);
-      sendCommand(cmd.device, cmd.action);
-      document.getElementById('voiceStatus').textContent = '✅ ' + msg;
+      document.getElementById('voiceStatus').textContent = '❓ Không tìm thấy lệnh phù hợp';
     }
   } catch(err) {
     addLog('error', '❌ ' + err.message);
