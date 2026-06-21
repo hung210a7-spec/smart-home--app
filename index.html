@@ -367,6 +367,11 @@ body {
       <div class="name">Cảm biến</div>
       <div class="state" id="state-temp">-- °C / -- %</div>
     </div>
+    <div class="device-card" style="cursor:default;" id="card-gas">
+      <div class="icon">⚠️</div>
+      <div class="name">Khí Gas</div>
+      <div class="state" id="state-gas">-- %</div>
+    </div>
   </div>
 
   <!-- Gửi lời nhắc lên LCD -->
@@ -494,10 +499,22 @@ function connect() {
       if (d.light2 !== undefined) updateCard('light2', d.light2);
       if (d.fan   !== undefined) updateCard('fan',    d.fan);
       if (d.door  !== undefined) updateCard('door',   d.door);
-      if (d.temp  !== undefined) {
+      if (d.temp !== undefined) {
         currentTemp = parseFloat(d.temp).toFixed(1);
         currentHumi = parseFloat(d.humi).toFixed(1);
         document.getElementById('state-temp').textContent = currentTemp + '°C / ' + currentHumi + '%';
+      }
+      if (d.gas !== undefined) {
+        document.getElementById('state-gas').textContent = d.gas + '%';
+        const gasCard = document.getElementById('card-gas');
+        if (d.gas > 40) {
+          gasCard.classList.add('on');
+          document.getElementById('state-gas').style.color = '#ef4444';
+          document.getElementById('state-gas').textContent = d.gas + '% - Cảnh báo!';
+        } else {
+          gasCard.classList.remove('on');
+          document.getElementById('state-gas').style.color = '';
+        }
       }
       
       // Xử lý thông điệp quẹt thẻ RFID gửi từ ESP32
