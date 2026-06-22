@@ -396,6 +396,10 @@ body {
       <input type="password" id="mqttPass" placeholder="Mật khẩu HiveMQ của bạn" />
     </div>
     <div class="input-group">
+      <label>Tavily API Key (Tìm kiếm tin tức)</label>
+      <input type="password" id="tavilyKey" placeholder="tvly-..." />
+    </div>
+    <div class="input-group">
       <label>Giọng Tiếng Việt (Vietnamese Voice)</label>
       <select id="viVoiceSelect" onchange="saveSelectedVoices()"></select>
     </div>
@@ -539,11 +543,13 @@ let currentHumi = null;
 function connect() {
   const apiKey  = document.getElementById('apiKey').value.trim();
   const mqttPass = document.getElementById('mqttPass').value.trim();
+  const tavilyKey = document.getElementById('tavilyKey').value.trim();
   if (!apiKey)   { alert('Nhập Groq API Key!'); return; }
   if (!mqttPass) { alert('Nhập mật khẩu HiveMQ!'); return; }
 
   localStorage.setItem('sh_groqkey', apiKey);
   localStorage.setItem('sh_mqttpass', mqttPass);
+  localStorage.setItem('sh_tavilykey', tavilyKey);
   setStatus('Đang kết nối...', 'yellow');
 
   if (mqttClient) { mqttClient.end(true); mqttClient = null; }
@@ -962,6 +968,44 @@ Quy tắc:
 - Khi người dùng trò chuyện, hỏi thông tin: Trả lời trực tiếp vào trường "speak" một cách thông minh, chi tiết bằng chính ngôn ngữ họ dùng, đồng thời ghi mã ngôn ngữ BCP-47 tương ứng vào trường "lang" (Ví dụ: "en-US" cho tiếng Anh, "vi-VN" cho tiếng Việt).
 - Hỗ trợ sửa lỗi chính tả phát âm tiếng Việt (Ví dụ: "bật", "bậc", "mở" -> "on"; "tắt", "tặc", "khóa" -> "off").`;
 
+  // --- TAVILY SEARCH INTEGRATION ---
+  const tavilyKey = localStorage.getItem('sh_tavilykey') || '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';
+  let searchContext = "";
+  
+  const searchKeywords = ["tin tức", "đọc báo", "báo hôm nay", "tin mới", "tìm kiếm", "hôm nay có gì", "tin hot"];
+  const needSearch = searchKeywords.some(kw => text.toLowerCase().includes(kw));
+
+  if (needSearch && tavilyKey) {
+    document.getElementById('voiceStatus').textContent = 'Đang tìm kiếm thông tin...';
+    try {
+      const tvRes = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: tavilyKey,
+          query: text,
+          search_depth: "basic",
+          include_answer: true,
+          max_results: 3
+        })
+      });
+      const tvData = await tvRes.json();
+      if (tvData.answer || (tvData.results && tvData.results.length > 0)) {
+        searchContext = "\n\nTHÔNG TIN CẬP NHẬT TỪ INTERNET (hãy dựa vào đây để trả lời người dùng):\n";
+        if (tvData.answer) searchContext += tvData.answer + "\n";
+        if (tvData.results) {
+          tvData.results.forEach(r => searchContext += `- ${r.title}: ${r.content}\n`);
+        }
+        addLog('action', '🔍 Đã tìm kiếm: ' + text);
+      }
+    } catch(e) {
+      console.error("Tavily error:", e);
+    }
+  }
+  // ---------------------------------
+  
+  const finalPromptSystem = searchContext ? promptSystem + searchContext : promptSystem;
+
   // Thêm câu nói của người dùng vào lịch sử ngữ cảnh
   conversationHistory.push({ role: 'user', content: text });
   if (conversationHistory.length > 20) {
@@ -971,7 +1015,7 @@ Quy tắc:
 
   // Xây dựng danh sách tin nhắn gửi lên API
   const messages = [
-    { role: 'system', content: promptSystem },
+    { role: 'system', content: finalPromptSystem },
     ...conversationHistory
   ];
 
@@ -1409,8 +1453,10 @@ window.onload = () => {
   }
   const k = localStorage.getItem('sh_groqkey') || '';
   const p = localStorage.getItem('sh_mqttpass') || '';
+  const t = localStorage.getItem('sh_tavilykey') || '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';
   document.getElementById('apiKey').value = k;
   document.getElementById('mqttPass').value = p;
+  document.getElementById('tavilyKey').value = t;
   if (k && p) setTimeout(connect, 500);
 };
 </script>
