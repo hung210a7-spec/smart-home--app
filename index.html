@@ -581,52 +581,50 @@ body {
 
 <!-- Tab 2: Quản lý Thẻ RFID & Lịch sử -->
 <div id="tab-rfid" class="web-tab-content" style="display:none;">
-
-  <!-- ── Đăng ký thẻ: whitelist + blacklist chung một form ── -->
   <div class="setup-panel">
-    <div class="panel-title">🪪 Đăng ký / Cấm thẻ</div>
-    <div class="flex-row" style="flex-wrap:wrap; gap:8px;">
-      <input type="text" id="newCardUid" placeholder="UID thẻ (tự điền khi quẹt thẻ lạ)" style="min-width:140px;" />
-      <input type="text" id="newCardName" placeholder="Tên / Ghi chú (không dấu)" style="min-width:110px;" />
+    <div class="panel-title">🪪 Đăng ký thẻ mới</div>
+    <div class="flex-row">
+      <input type="text" id="newCardUid" placeholder="Mã thẻ UID (Ví dụ: 1A2B3C4D)" />
+      <input type="text" id="newCardName" placeholder="Tên chủ thẻ (Ví dụ: Bo, Me, Quang)" />
+      <button onclick="addNewCard()">Thêm</button>
     </div>
-    <div class="flex-row" style="margin-bottom:0; gap:8px;">
-      <button onclick="addNewCard('allow')" style="flex:1; background:linear-gradient(180deg,#6dbf95,#3a9e6a); color:#0c1a10;">✅ Cho phép</button>
-      <button onclick="addNewCard('deny')"  style="flex:1; background:linear-gradient(180deg,#c9694f,#a04030); color:#fff;">🚫 Cấm vào</button>
-    </div>
-    <p style="font-size:0.7em; color:var(--ink-dim); font-family:'Inter',sans-serif; margin-top:8px;">* Quẹt thẻ lạ bất kỳ để tự động điền UID. Chọn Cho phép hoặc Cấm vào.</p>
+    <p style="font-size:0.7em; color:var(--ink-dim); font-family:'Inter',sans-serif;">* Quẹt thẻ lạ bất kỳ để tự động điền nhanh mã thẻ UID</p>
   </div>
-
-  <!-- ── Danh sách whitelist ── -->
+  
   <div class="setup-panel">
-    <div class="panel-title">✅ Thẻ được phép vào</div>
+    <div class="panel-title">📋 Danh sách thẻ đã đăng ký</div>
     <div class="card-table-container">
       <table class="card-table">
-        <thead><tr><th>UID</th><th>Tên</th><th>Hành động</th></tr></thead>
-        <tbody id="rfidWhitelistBody"></tbody>
+        <thead>
+          <tr>
+            <th>Mã thẻ UID</th>
+            <th>Tên chủ thẻ</th>
+            <th>Quyền ra vào</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="rfidWhitelistBody">
+          <!-- Sẽ được điền động bằng JS -->
+        </tbody>
       </table>
     </div>
   </div>
 
-  <!-- ── Danh sách blacklist ── -->
-  <div class="setup-panel" style="border-color: rgba(201,105,79,0.25);">
-    <div class="panel-title" style="color:var(--signal-red);">🚫 Thẻ bị cấm</div>
-    <div class="card-table-container">
-      <table class="card-table">
-        <thead><tr><th>UID</th><th>Ghi chú</th><th>Hành động</th></tr></thead>
-        <tbody id="rfidBlacklistBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ── Lịch sử ra vào ── -->
   <div class="setup-panel">
     <div class="panel-title">📜 Lịch sử ra vào cửa</div>
     <div class="card-table-container">
       <table class="card-table">
         <thead>
-          <tr><th>Thời gian</th><th>UID</th><th>Tên</th><th>Kết quả</th></tr>
+          <tr>
+            <th>Thời gian</th>
+            <th>Mã thẻ UID</th>
+            <th>Tên thẻ</th>
+            <th>Trạng thái</th>
+          </tr>
         </thead>
-        <tbody id="rfidLogsBody"></tbody>
+        <tbody id="rfidLogsBody">
+          <!-- Sẽ được điền động bằng JS -->
+        </tbody>
       </table>
     </div>
   </div>
@@ -676,7 +674,7 @@ function connect() {
     mqttClient.subscribe(MQTT_STATUS);
     addLog('ai', '✅ Kết nối HiveMQ Cloud thành công!');
     // Tự động đồng bộ danh sách thẻ khi kết nối
-    syncListsToEsp32();
+    syncWhitelistToEsp32();
   });
 
   mqttClient.on('message', (topic, message) => {
@@ -706,34 +704,32 @@ function connect() {
       
       // Xử lý thông điệp quẹt thẻ RFID gửi từ ESP32
       if (d.type === 'rfid') {
-        const whiteEntry = rfidWhitelist.find(c => c.uid === d.uid);
-        const blackEntry = rfidBlacklist.find(c => c.uid === d.uid);
-
-        // Ghi lịch sử với trường result rõ ràng hơn
-        const nowStr = new Date().toLocaleTimeString('vi', {hour:'2-digit',minute:'2-digit',second:'2-digit'})
-                     + ' ' + new Date().toLocaleDateString('vi');
-        let result, cardName;
-        if (whiteEntry)      { result = 'allowed'; cardName = whiteEntry.name; }
-        else if (blackEntry) { result = 'banned';  cardName = blackEntry.name; }
-        else                 { result = 'unknown'; cardName = ''; }
-
-        rfidLogs.push({ time: nowStr, uid: d.uid, name: cardName, result });
+        const matched = rfidWhitelist.find(c => c.uid === d.uid);
+        const cardName = matched ? matched.name : '';
+        
+        // Ghi lại lịch sử
+        const nowStr = new Date().toLocaleTimeString('vi', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) + ' ' + new Date().toLocaleDateString('vi');
+        rfidLogs.push({
+          time: nowStr,
+          uid: d.uid,
+          name: cardName,
+          allowed: d.allowed
+        });
         if (rfidLogs.length > 100) rfidLogs.shift();
         saveLogs();
-
-        // Tự điền UID vào form nếu chưa đăng ký
-        if (!whiteEntry && !blackEntry) {
+        
+        // Điền nhanh UID nếu thẻ chưa đăng ký
+        if (!matched) {
           document.getElementById('newCardUid').value = d.uid;
         }
-
-        if (result === 'allowed') {
-          addLog('action', `🚪 Mở cửa: [${cardName}] (${d.uid})`);
+        
+        // Log vào chat log
+        if (d.allowed) {
+          addLog('action', `🚪 Thẻ hợp lệ: [${cardName}] (${d.uid}) đã mở cửa.`);
+          // Gửi phản hồi tên thẻ cho ESP32 hiển thị
           mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'rfid_name', action: cardName }), { qos: 1 });
-        } else if (result === 'banned') {
-          addLog('error', `🚫 Thẻ bị cấm: [${cardName}] (${d.uid}) cố vào!`);
-          // Có thể gửi tín hiệu cảnh báo về ESP32 ở đây nếu cần
         } else {
-          addLog('error', `❓ Thẻ lạ: (${d.uid}) — Quẹt thẻ lạ, chọn tab Quản lý Thẻ để đăng ký.`);
+          addLog('error', `⚠️ Thẻ không hợp lệ: (${d.uid}) muốn truy cập.`);
         }
       }
     } catch(e) {}
@@ -750,126 +746,214 @@ function connect() {
   });
 }
 
-// ===== HỆ THỐNG GIAO TIẾP GIỌNG NÓI LIÊN TỤC =====
-// Dùng Web Speech API (nhận dạng tức thì, không có API latency) +
-// state machine barge-in cho trải nghiệm Gemini Live-style:
-//   • Nhấn mic → bắt đầu lắng nghe liên tục
-//   • Nói xong → AI trả lời bằng giọng đọc
-//   • Nói chen vào lúc AI đang đọc → AI dừng ngay, nghe bạn tiếp
-//   • Im lặng 5s sau khi AI trả lời → cuộc hội thoại tự đóng
-//
-// Vấn đề tiếng Anh: Web Speech API nhận `lang=""` trên Chrome/Android
-// để tự detect ngôn ngữ. Groq LLM vẫn hiểu lệnh dù text có hơi lệch.
-let isConversationActive = false;
-let liveState = 'IDLE';
-let silenceTimer = null;
-let audioCtx = null;
+// ===== HỆ THỐNG GIAO TIẾP GIỌNG NÓI LIÊN TỤC (GEMINI LIVE MODE) =====
 let recognition = null;
-let recRestartTimer = null;
+let isConversationActive = false; // Trạng thái cuộc gọi thoại có đang bật hay không
+let liveState = 'IDLE'; // Trạng thái hiện tại: IDLE, LISTENING, USER_SPEAKING, PROCESSING, SPEAKING, WAITING
+let silenceTimer = null;
+let recognitionRestartTimer = null;
+let audioCtx = null;
 
-function initRecognition() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    addLog('error', '⚠️ Trình duyệt không hỗ trợ Speech Recognition. Dùng Chrome/Safari.');
+// Hàm tạo âm thanh bíp thông minh trực tiếp từ trình duyệt
+function playSound(type) {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    if (type === 'start') {
+      // 1 âm thanh khởi động nhẹ nhàng
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+    } else if (type === 'think') {
+      // Báo hiệu đã dừng nói và chuẩn bị phản hồi
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'interrupt') {
+      // Âm thanh báo hiệu người dùng ngắt lời AI
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.06);
+    } else if (type === 'end') {
+      // 2 tiếng bíp trầm kết thúc cuộc gọi
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+
+      setTimeout(() => {
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(390, audioCtx.currentTime);
+        gain2.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+        osc2.start();
+        osc2.stop(audioCtx.currentTime + 0.2);
+      }, 150);
+    }
+  } catch (e) {
+    console.error('Không thể phát âm thanh bíp:', e);
+  }
+}
+
+// Khởi tạo bộ nhận diện giọng nói Web Speech API
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    addLog('error', '⚠️ Trình duyệt của bạn không hỗ trợ Web Speech API! Vui lòng dùng Chrome hoặc Safari.');
     return null;
   }
-  const rec = new SR();
-  rec.continuous      = true;
-  rec.interimResults  = true;
-  // Để trống → Chrome tự detect ngôn ngữ (Việt + Anh cùng phiên)
-  // Fallback: 'vi-VN' nếu auto detect không hoạt động trên thiết bị cũ
-  rec.lang            = '';
 
-  rec.onstart = () => console.log('[STT] started');
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = 'vi-VN';
+
+  rec.onstart = () => {
+    console.log('Speech recognition started');
+  };
 
   rec.onresult = (event) => {
-    let interim = '';
-    let final_  = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const t = event.results[i][0].transcript;
-      event.results[i].isFinal ? (final_ += t) : (interim += t);
-    }
+    let interimTranscript = '';
+    let finalTranscript = '';
 
-    // Bất kỳ tín hiệu nào từ mic → hủy đếm ngược chờ
-    if (interim || final_) {
-      if (silenceTimer) { clearInterval(silenceTimer); silenceTimer = null; }
-
-      // ── BARGE-IN: nếu AI đang đọc thì dừng ngay ──
-      if (window.speechSynthesis && window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-        playSound('interrupt');
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        finalTranscript += event.results[i][0].transcript;
+      } else {
+        interimTranscript += event.results[i][0].transcript;
       }
     }
 
-    if (interim) {
-      setLiveState('USER_SPEAKING');
-      document.getElementById('voiceStatus').innerHTML =
-        `🎙️ <span style="color:#c084fc;">"${interim}"</span>`;
+    if (interimTranscript.trim().length > 0 || finalTranscript.trim().length > 0) {
+      // Hủy đếm ngược 5 giây khi người dùng bắt đầu nói hoặc ngắt lời
+      if (silenceTimer) {
+        clearInterval(silenceTimer);
+        silenceTimer = null;
+      }
+
+      // Xử lý NGẮT LỜI (Barge-in): Nếu AI đang nói, hủy nói ngay lập tức để lắng nghe
+      if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        playSound('interrupt');
+        console.log('Barge-in: Đã ngắt lời AI');
+        setLiveState('USER_SPEAKING');
+      }
+
+      if (interimTranscript.trim().length > 0) {
+        setLiveState('USER_SPEAKING');
+        document.getElementById('voiceStatus').innerHTML = `🎙️ <span style="color: #c084fc;">"${interimTranscript}"</span>`;
+      }
     }
 
-    if (final_.trim()) {
+    if (finalTranscript.trim().length > 0) {
+      console.log('Final speech detected:', finalTranscript);
+      // Dừng nghe tạm thời hoặc tạm khóa trạng thái để xử lý
       setLiveState('PROCESSING');
       playSound('think');
-      processLiveSpeech(final_.trim());
+      processLiveSpeech(finalTranscript);
     }
   };
 
-  rec.onerror = (e) => {
-    // 'no-speech' và 'aborted' là bình thường; các lỗi khác thì khởi động lại
-    if (e.error !== 'no-speech' && e.error !== 'aborted' && isConversationActive) {
-      scheduleRecRestart();
+  rec.onerror = (event) => {
+    console.warn('SpeechRecognition error:', event.error);
+    if (event.error !== 'no-speech' && isConversationActive && event.error !== 'aborted') {
+      restartRecognition();
     }
   };
 
   rec.onend = () => {
-    // Web Speech API tự dừng sau ~60s hoặc khi có lỗi — khởi động lại ngay
-    if (isConversationActive) scheduleRecRestart();
+    console.log('SpeechRecognition ended');
+    if (isConversationActive) {
+      restartRecognition();
+    }
   };
 
   return rec;
 }
 
-function scheduleRecRestart() {
-  clearTimeout(recRestartTimer);
-  recRestartTimer = setTimeout(() => {
-    if (!isConversationActive || !recognition) return;
-    try { recognition.start(); } catch(e) { /* đã running */ }
-  }, 150);
+// Khởi chạy lại Speech Recognition để duy trì mic mở liên tục
+function restartRecognition() {
+  if (recognitionRestartTimer) clearTimeout(recognitionRestartTimer);
+  recognitionRestartTimer = setTimeout(() => {
+    if (isConversationActive && recognition) {
+      try {
+        recognition.start();
+      } catch (e) {
+        // Đã chạy sẵn
+      }
+    }
+  }, 100);
 }
 
+// Bắt đầu chế độ rảnh tay Gemini Live
 function startLiveConversation() {
   isConversationActive = true;
+  playSound('start');
 
-  // Unlock AudioContext (cần sau gesture người dùng)
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (!recognition) {
+    recognition = initSpeechRecognition();
+  }
 
-  // Unlock TTS trên iOS/Android (cần gọi trong gesture handler)
+  if (recognition) {
+    try {
+      recognition.start();
+    } catch (e) {
+      console.log('Recognition already running');
+    }
+  }
+
+  setLiveState('LISTENING');
+
+  // Kích hoạt âm thanh TTS cho iOS Safari bằng cách phát chuỗi rỗng
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
-    const warmup = new SpeechSynthesisUtterance('');
-    window.speechSynthesis.speak(warmup);
+    const u = new SpeechSynthesisUtterance('');
+    window.speechSynthesis.speak(u);
   }
-
-  if (!recognition) recognition = initRecognition();
-  if (recognition) {
-    try { recognition.start(); } catch(e) {}
-  }
-
-  playSound('start');
-  setLiveState('LISTENING');
 }
 
+// Tắt cuộc trò chuyện
 function stopLiveConversation() {
   isConversationActive = false;
 
-  clearTimeout(recRestartTimer);
-  if (silenceTimer) { clearInterval(silenceTimer); silenceTimer = null; }
+  if (silenceTimer) {
+    clearInterval(silenceTimer);
+    silenceTimer = null;
+  }
 
   if (recognition) {
-    try { recognition.stop(); } catch(e) {}
+    try {
+      recognition.stop();
+    } catch (e) {}
   }
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
 
   playSound('end');
   setLiveState('IDLE');
@@ -877,7 +961,11 @@ function stopLiveConversation() {
 
 // Nút Mic điều khiển Bật/Tắt cuộc trò chuyện
 function startVoice() {
-  isConversationActive ? stopLiveConversation() : startLiveConversation();
+  if (isConversationActive) {
+    stopLiveConversation();
+  } else {
+    startLiveConversation();
+  }
 }
 
 // Cập nhật trạng thái hiển thị của nút Mic & Dòng chữ trạng thái
@@ -1131,93 +1219,40 @@ function setStatus(text, color) {
 }
 
 // Hàm phát giọng nói (TTS) — tích hợp với bộ máy trạng thái hội thoại liên tục
-// Chấm điểm chất lượng giọng đọc: giọng "online" (localService === false, tức được
-// tổng hợp trên máy chủ/đám mây) gần như luôn tự nhiên hơn hẳn giọng "local" cài sẵn
-// trong máy, vốn thường là giọng robot chất lượng thấp. Đây là tín hiệu đáng tin cậy
-// hơn nhiều so với chỉ đoán qua tên giọng.
-function scoreVoice(v) {
-  let score = 0;
-  if (v.localService === false) score += 10;
-  const n = v.name.toLowerCase();
-  ['neural', 'wavenet', 'online', 'natural', 'premium', 'enhanced', 'plus', 'studio', 'siri', 'nâng cao', 'giọng nói']
-    .forEach(k => { if (n.includes(k)) score += 3; });
-  if (n.includes('google')) score += 1;
-  return score;
-}
-
-function pickBestVoice(matchedVoices) {
-  if (!matchedVoices.length) return null;
-  return [...matchedVoices].sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
-}
-
-// Làm sạch & chuẩn hoá văn bản trước khi đọc — áp dụng cho mọi ngôn ngữ:
-// bỏ định dạng Markdown (AI đôi khi lỡ trả về **đậm**, _nghiêng_, # tiêu đề...),
-// bỏ emoji, gọn khoảng trắng/dấu câu thừa.
-function stripMarkdownAndEmoji(text) {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    .replace(/_(.*?)_/g, '$1')
-    .replace(/`{1,3}([^`]*)`{1,3}/g, '$1')
-    .replace(/^#{1,6}\s*/gm, '')
-    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}]/gu, '')
-    .replace(/[ \t]{2,}/g, ' ')
-    .replace(/\n{2,}/g, '. ')
-    .trim();
-}
-
-// Chuẩn hoá ký hiệu/đơn vị sang dạng đọc được — đây là phần chính khắc phục lỗi
-// "ngọng" và bỏ sót ký tự như °C, %, đơn vị viết tắt...
-function normalizeSymbolsVi(text) {
-  return text
-    .replace(/°\s*C\b/gi, ' độ C')
-    .replace(/\bđộ\s*C\b/gi, 'độ xê')
-    .replace(/°\s*F\b/gi, ' độ F')
-    .replace(/\bđộ\s*F\b/gi, 'độ ép')
-    .replace(/°/g, ' độ ')
-    .replace(/%/g, ' phần trăm')
-    .replace(/\bkm\/h\b/gi, 'ki lô mét trên giờ')
-    .replace(/\bm\/s\b/gi, 'mét trên giây')
-    .replace(/\bm2\b|\bm²\b/gi, 'mét vuông')
-    .replace(/\bkg\b/gi, 'ki lô gam')
-    .replace(/&/g, ' và ')
-    .replace(/@/g, ' a còng ')
-    .replace(/\+/g, ' cộng ')
-    .replace(/(\d)\s*-\s*(\d)/g, '$1 đến $2')
-    .replace(/\.\.\./g, ', ')
-    .replace(/\b(đèn|quạt|cửa) 1\b/gi, '$1 một')
-    .replace(/\b(đèn|quạt|cửa) 2\b/gi, '$1 hai')
-    // Phiên âm từ tiếng Anh thông dụng sang tiếng Việt để giọng đọc vi-VN không bị ngọng
-    .replace(/\bjarvis\b/gi, 'Gia vít')
-    .replace(/\bapi\b/gi, 'A P I')
-    .replace(/\bgroq\b/gi, 'Gờ rốc')
-    .replace(/\bllama\b/gi, 'La ma')
-    .replace(/\bmqtt\b/gi, 'Mờ Quy Tê Tê')
-    .replace(/\bhivemq\b/gi, 'Hai vờ Mờ Quy')
-    .replace(/\bsmart\s*home\b/gi, 'Nhà thông minh')
-    .replace(/\bsmart\b/gi, 'thông minh')
-    .replace(/\bon\b/gi, 'bật')
-    .replace(/\boff\b/gi, 'tắt')
-    .replace(/\bled\b/gi, 'lét')
-    .replace(/\besp32\b/gi, 'E ét pê ba hai')
-    .replace(/\besp\b/gi, 'E ét pê')
-    .replace(/\bwifi\b/gi, 'Quai phai')
-    .replace(/\bwi-fi\b/gi, 'Quai phai');
-}
-
 function speak(text, langCode = 'vi-VN') {
   if (!window.speechSynthesis || !text) {
     if (isConversationActive) startSilenceTimer();
     return;
   }
   window.speechSynthesis.cancel();
-
-  let cleanText = stripMarkdownAndEmoji(text);
+  
+  let cleanText = text;
+  // Chỉ chuẩn hóa văn bản đối với Tiếng Việt
   if (langCode.startsWith('vi')) {
-    cleanText = normalizeSymbolsVi(cleanText);
-  } else {
-    // Với ngôn ngữ khác vẫn nên đọc được các ký hiệu phổ biến thay vì bỏ qua
-    cleanText = cleanText.replace(/°\s*C\b/gi, ' degrees C').replace(/°\s*F\b/gi, ' degrees F').replace(/%/g, ' percent');
+    cleanText = text
+      .replace(/ độ C/gi, ' độ')
+      .replace(/°C/gi, ' độ')
+      .replace(/%/g, ' phần trăm')
+      .replace(/\bC\b/g, 'xê')
+      .replace(/\b(đèn|quạt|cửa) 1\b/gi, '$1 một')
+      .replace(/\b(đèn|quạt|cửa) 2\b/gi, '$1 hai')
+      
+      // Phiên âm từ tiếng Anh thông dụng sang tiếng Việt để giọng đọc vi-VN không bị ngọng
+      .replace(/\bjarvis\b/gi, 'Gia vít')
+      .replace(/\bapi\b/gi, 'A P I')
+      .replace(/\bgroq\b/gi, 'Gờ rốc')
+      .replace(/\bllama\b/gi, 'La ma')
+      .replace(/\bmqtt\b/gi, 'Mờ Quy Tê Tê')
+      .replace(/\bhivemq\b/gi, 'Hai vờ Mờ Quy')
+      .replace(/\bsmart\s*home\b/gi, 'Nhà thông minh')
+      .replace(/\bsmart\b/gi, 'thông minh')
+      .replace(/\bon\b/gi, 'bật')
+      .replace(/\boff\b/gi, 'tắt')
+      .replace(/\bled\b/gi, 'lét')
+      .replace(/\besp32\b/gi, 'E ét pê ba hai')
+      .replace(/\besp\b/gi, 'E ét pê')
+      .replace(/\bwifi\b/gi, 'Quai phai')
+      .replace(/\bwi-fi\b/gi, 'Quai phai');
   }
 
   const utterance = new SpeechSynthesisUtterance(cleanText);
@@ -1243,16 +1278,25 @@ function speak(text, langCode = 'vi-VN') {
     targetVoice = voices.find(v => v.name === savedEnVoice);
   }
 
-  // 2. Nếu không chọn thủ công hoặc giọng thủ công không khả dụng, chấm điểm chất lượng
-  //    và tự động chọn giọng tốt nhất hiện có (ưu tiên giọng online/cloud).
+  // 2. Nếu không chọn thủ công hoặc giọng thủ công không khả dụng, tự động tìm kiếm thông minh
   if (!targetVoice) {
     const matchedVoices = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
-    targetVoice = pickBestVoice(matchedVoices);
+    targetVoice = matchedVoices.find(v => {
+      const nameLower = v.name.toLowerCase();
+      return nameLower.includes('natural') || 
+             nameLower.includes('online') || 
+             nameLower.includes('premium') || 
+             nameLower.includes('enhanced') || 
+             nameLower.includes('siri') || 
+             nameLower.includes('nâng cao') ||
+             nameLower.includes('gọng nói') ||
+             nameLower.includes('giọng nói');
+    }) || matchedVoices.find(v => v.name.toLowerCase().includes('google')) || matchedVoices[0];
   }
   
   if (targetVoice) {
     utterance.voice = targetVoice;
-    console.log('Selected Voice:', targetVoice.name, '(' + langCode + ')', 'score:', scoreVoice(targetVoice));
+    console.log('Selected Voice:', targetVoice.name, '(' + langCode + ')');
   }
 
   if (isConversationActive) {
@@ -1276,16 +1320,6 @@ function speak(text, langCode = 'vi-VN') {
   window.speechSynthesis.speak(utterance);
 }
 
-// Đọc thử một câu mẫu chứa các ký tự/đơn vị hay bị đọc sai, để người dùng nghe và
-// chọn giọng phù hợp ngay trong phần Cấu hình, không cần chạy cả luồng hội thoại.
-function testVoice(langPrefix) {
-  if (langPrefix === 'vi') {
-    speak('Xin chào, tôi là Jarvis. Nhiệt độ phòng hiện tại là hai mươi tám phẩy năm độ C, độ ẩm bảy mươi phần trăm.', 'vi-VN');
-  } else {
-    speak('Hello, I am Jarvis. The room temperature is seventy five degrees, humidity is sixty percent.', 'en-US');
-  }
-}
-
 function populateVoiceSelectors() {
   if (!window.speechSynthesis) return;
   const list = window.speechSynthesis.getVoices();
@@ -1297,24 +1331,23 @@ function populateVoiceSelectors() {
   const prevVi = viSelect.value || localStorage.getItem('sh_vi_voice');
   const prevEn = enSelect.value || localStorage.getItem('sh_en_voice');
 
-  viSelect.innerHTML = '<option value="">-- Tự động chọn (tốt nhất) --</option>';
-  enSelect.innerHTML = '<option value="">-- Tự động chọn (tốt nhất) --</option>';
+  viSelect.innerHTML = '<option value="">-- Tự động chọn --</option>';
+  enSelect.innerHTML = '<option value="">-- Tự động chọn --</option>';
 
-  const byScoreDesc = (a, b) => scoreVoice(b) - scoreVoice(a);
-  const viVoices = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi')).sort(byScoreDesc);
-  const enVoices = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('en')).sort(byScoreDesc);
+  const viVoices = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi'));
+  const enVoices = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('en'));
 
   viVoices.forEach(v => {
     const opt = document.createElement('option');
     opt.value = v.name;
-    opt.textContent = v.name + (v.localService === false ? ' ⭐ Online' : '');
+    opt.textContent = v.name;
     viSelect.appendChild(opt);
   });
 
   enVoices.forEach(v => {
     const opt = document.createElement('option');
     opt.value = v.name;
-    opt.textContent = v.name + (v.localService === false ? ' ⭐ Online' : '');
+    opt.textContent = v.name;
     enSelect.appendChild(opt);
   });
 
@@ -1329,29 +1362,22 @@ function saveSelectedVoices() {
   localStorage.setItem('sh_en_voice', enVal);
 }
 
-
 // ===== QUẢN LÝ THẺ RFID & LỜI NHẮC =====
-let rfidWhitelist  = JSON.parse(localStorage.getItem('sh_rfid_whitelist')  || '[]');
-let rfidBlacklist  = JSON.parse(localStorage.getItem('sh_rfid_blacklist')  || '[]');
-let rfidLogs       = JSON.parse(localStorage.getItem('sh_rfid_logs')       || '[]');
+let rfidWhitelist = JSON.parse(localStorage.getItem('sh_rfid_whitelist') || '[]');
+let rfidLogs = JSON.parse(localStorage.getItem('sh_rfid_logs') || '[]');
 
 function switchWebTab(tabName) {
   document.getElementById('tab-control').style.display = tabName === 'control' ? 'block' : 'none';
-  document.getElementById('tab-rfid').style.display    = tabName === 'rfid'    ? 'block' : 'none';
+  document.getElementById('tab-rfid').style.display = tabName === 'rfid' ? 'block' : 'none';
+  
   document.getElementById('btn-tab-control').classList.toggle('active', tabName === 'control');
-  document.getElementById('btn-tab-rfid').classList.toggle('active',    tabName === 'rfid');
+  document.getElementById('btn-tab-rfid').classList.toggle('active', tabName === 'rfid');
 }
 
 function saveWhitelist() {
   localStorage.setItem('sh_rfid_whitelist', JSON.stringify(rfidWhitelist));
   renderWhitelist();
-  syncListsToEsp32();
-}
-
-function saveBlacklist() {
-  localStorage.setItem('sh_rfid_blacklist', JSON.stringify(rfidBlacklist));
-  renderBlacklist();
-  syncListsToEsp32();
+  syncWhitelistToEsp32();
 }
 
 function saveLogs() {
@@ -1364,7 +1390,7 @@ function renderWhitelist() {
   if (!tbody) return;
   tbody.innerHTML = '';
   if (rfidWhitelist.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#666;padding:14px;">Chưa có thẻ nào</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666;">Chưa có thẻ nào được đăng ký</td></tr>';
     return;
   }
   rfidWhitelist.forEach(card => {
@@ -1372,31 +1398,9 @@ function renderWhitelist() {
     tr.innerHTML = `
       <td><code>${card.uid}</code></td>
       <td>${card.name}</td>
-      <td>
-        <button class="btn-danger" style="margin-right:4px;" onclick="moveToBlacklist('${card.uid}')">🚫 Cấm</button>
-        <button class="btn-danger" onclick="deleteFromWhitelist('${card.uid}')">Xóa</button>
-      </td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-function renderBlacklist() {
-  const tbody = document.getElementById('rfidBlacklistBody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-  if (rfidBlacklist.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#666;padding:14px;">Chưa cấm thẻ nào</td></tr>';
-    return;
-  }
-  rfidBlacklist.forEach(card => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><code>${card.uid}</code></td>
-      <td>${card.name}</td>
-      <td>
-        <button style="background:var(--signal-green);border:none;color:#0c1a10;padding:4px 8px;border-radius:6px;font-size:0.8em;font-weight:600;cursor:pointer;margin-right:4px;" onclick="moveToWhitelist('${card.uid}')">✅ Cho phép</button>
-        <button class="btn-danger" onclick="deleteFromBlacklist('${card.uid}')">Xóa</button>
-      </td>`;
+      <td><span class="badge allowed">Cho phép</span></td>
+      <td><button class="btn-danger" onclick="deleteCard('${card.uid}')">Xóa</button></td>
+    `;
     tbody.appendChild(tr);
   });
 }
@@ -1406,92 +1410,58 @@ function renderLogs() {
   if (!tbody) return;
   tbody.innerHTML = '';
   if (rfidLogs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666;padding:14px;">Chưa có lịch sử</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666;">Chưa có lịch sử ra vào</td></tr>';
     return;
   }
   rfidLogs.slice().reverse().forEach(log => {
     const tr = document.createElement('tr');
-    let badge, badgeText;
-    if (log.result === 'allowed')    { badge = 'allowed'; badgeText = '✅ Mở cửa'; }
-    else if (log.result === 'banned') { badge = 'denied';  badgeText = '🚫 Bị cấm'; }
-    else                              { badge = 'denied';  badgeText = '❓ Thẻ lạ'; }
+    const badgeClass = log.allowed ? 'allowed' : 'denied';
+    const badgeText = log.allowed ? 'Mở cửa thành công' : 'Bị từ chối';
     tr.innerHTML = `
       <td>${log.time}</td>
       <td><code>${log.uid}</code></td>
-      <td>${log.name || '—'}</td>
-      <td><span class="badge ${badge}">${badgeText}</span></td>`;
+      <td>${log.name || 'Thẻ lạ'}</td>
+      <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+    `;
     tbody.appendChild(tr);
   });
 }
 
-function addNewCard(type) {
-  const uidInput  = document.getElementById('newCardUid');
+function addNewCard() {
+  const uidInput = document.getElementById('newCardUid');
   const nameInput = document.getElementById('newCardName');
-  const uid  = uidInput.value.trim().toUpperCase();
+  const uid = uidInput.value.trim().toUpperCase();
   const name = removeVietnameseTones(nameInput.value.trim());
-  if (!uid || !name) { alert('Nhập đầy đủ UID và Tên/Ghi chú!'); return; }
-
-  const inWhite = rfidWhitelist.some(c => c.uid === uid);
-  const inBlack = rfidBlacklist.some(c => c.uid === uid);
-
-  if (type === 'allow') {
-    if (inWhite) { alert('Thẻ này đã có trong danh sách cho phép!'); return; }
-    if (inBlack) { rfidBlacklist = rfidBlacklist.filter(c => c.uid !== uid); saveBlacklist(); }
-    rfidWhitelist.push({ uid, name });
-    saveWhitelist();
-    addLog('action', `✅ Cho phép thẻ: ${name} (${uid})`);
-  } else {
-    if (inBlack) { alert('Thẻ này đã bị cấm rồi!'); return; }
-    if (inWhite) { rfidWhitelist = rfidWhitelist.filter(c => c.uid !== uid); saveWhitelist(); }
-    rfidBlacklist.push({ uid, name });
-    saveBlacklist();
-    addLog('action', `🚫 Đã cấm thẻ: ${name} (${uid})`);
+  
+  if (!uid || !name) {
+    alert('Vui lòng nhập đầy đủ Mã thẻ UID và Tên chủ thẻ (không dấu)!');
+    return;
   }
+  
+  if (rfidWhitelist.some(c => c.uid === uid)) {
+    alert('Mã thẻ UID này đã được đăng ký!');
+    return;
+  }
+  
+  rfidWhitelist.push({ uid, name });
+  saveWhitelist();
+  
   uidInput.value = '';
   nameInput.value = '';
+  addLog('action', `📝 Đăng ký thẻ mới: ${name} (${uid})`);
 }
 
-function deleteFromWhitelist(uid) {
-  if (!confirm('Xóa thẻ này khỏi danh sách cho phép?')) return;
+function deleteCard(uid) {
+  if (!confirm('Bạn có chắc chắn muốn xóa thẻ này?')) return;
   rfidWhitelist = rfidWhitelist.filter(c => c.uid !== uid);
   saveWhitelist();
-  addLog('action', `🗑️ Đã xóa thẻ cho phép: ${uid}`);
+  addLog('action', `❌ Đã xóa thẻ: ${uid}`);
 }
 
-function deleteFromBlacklist(uid) {
-  if (!confirm('Xóa thẻ này khỏi danh sách cấm?')) return;
-  rfidBlacklist = rfidBlacklist.filter(c => c.uid !== uid);
-  saveBlacklist();
-  addLog('action', `🗑️ Đã xóa thẻ cấm: ${uid}`);
-}
-
-function moveToBlacklist(uid) {
-  const card = rfidWhitelist.find(c => c.uid === uid);
-  if (!card) return;
-  rfidWhitelist = rfidWhitelist.filter(c => c.uid !== uid);
-  rfidBlacklist.push(card);
-  saveWhitelist();
-  saveBlacklist();
-  addLog('action', `🚫 Đã cấm thẻ: ${card.name} (${uid})`);
-}
-
-function moveToWhitelist(uid) {
-  const card = rfidBlacklist.find(c => c.uid === uid);
-  if (!card) return;
-  rfidBlacklist = rfidBlacklist.filter(c => c.uid !== uid);
-  rfidWhitelist.push(card);
-  saveWhitelist();
-  saveBlacklist();
-  addLog('action', `✅ Đã cho phép lại thẻ: ${card.name} (${uid})`);
-}
-
-// Sync cả whitelist (cho phép) lẫn blacklist (cấm) lên ESP32 qua MQTT.
-// ESP32 nhận: device:"rfid_sync" action:"ALLOW:UID1,UID2|DENY:UID3,UID4"
-function syncListsToEsp32() {
+function syncWhitelistToEsp32() {
   if (!mqttClient || !mqttClient.connected) return;
-  const allowStr = 'ALLOW:' + rfidWhitelist.map(c => c.uid).join(',');
-  const denyStr  = 'DENY:'  + rfidBlacklist.map(c => c.uid).join(',');
-  mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'rfid_sync', action: allowStr + '|' + denyStr }), { qos: 1 });
+  const uids = rfidWhitelist.map(c => c.uid).join(',') + (rfidWhitelist.length > 0 ? ',' : '');
+  mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'rfid_sync', action: uids }), { qos: 1 });
 }
 
 function removeVietnameseTones(str) {
@@ -1526,7 +1496,6 @@ function sendReminder() {
 
 window.onload = () => {
   renderWhitelist();
-  renderBlacklist();
   renderLogs();
   // Khắc phục lỗi nạp danh sách giọng nói trễ hoặc không kích hoạt sự kiện trên Safari iOS
   if (window.speechSynthesis) {
