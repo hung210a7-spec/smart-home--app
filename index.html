@@ -766,6 +766,8 @@ let silenceTimer = null;
 let audioCtx = null;
 let recognition = null;
 let recRestartTimer = null;
+let activeUtterance = null;
+let activeSpeechTimeout = null;
 
 function initRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -994,7 +996,7 @@ Câu nói của người dùng: "${text}"`;
           'Authorization': 'Bearer ' + apiKey
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: 'llama-3.1-8b-instant',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.1,
           response_format: { type: "json_object" }
@@ -1150,57 +1152,52 @@ function pickBestVoice(matchedVoices) {
   return [...matchedVoices].sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
 }
 
-// Làm sạch & chuẩn hoá văn bản trước khi đọc — áp dụng cho mọi ngôn ngữ:
-// bỏ định dạng Markdown (AI đôi khi lỡ trả về **đậm**, _nghiêng_, # tiêu đề...),
-// bỏ emoji, gọn khoảng trắng/dấu câu thừa.
 function stripMarkdownAndEmoji(text) {
+  if (!text) return '';
   return text
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/\*(.*?)\*/g, '$1')
     .replace(/_(.*?)_/g, '$1')
     .replace(/`{1,3}([^`]*)`{1,3}/g, '$1')
     .replace(/^#{1,6}\s*/gm, '')
-    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}]/gu, '')
+    .replace(/\p{Emoji_Presentation}/gu, '')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n{2,}/g, '. ')
     .trim();
 }
 
-// Chuẩn hoá ký hiệu/đơn vị sang dạng đọc được — đây là phần chính khắc phục lỗi
-// "ngọng" và bỏ sót ký tự như °C, %, đơn vị viết tắt...
 function normalizeSymbolsVi(text) {
+  if (!text) return '';
   return text
-    .replace(/°\s*C\b/gi, ' độ C')
-    .replace(/\bđộ\s*C\b/gi, 'độ xê')
-    .replace(/°\s*F\b/gi, ' độ F')
-    .replace(/\bđộ\s*F\b/gi, 'độ ép')
-    .replace(/°/g, ' độ ')
-    .replace(/%/g, ' phần trăm')
-    .replace(/\bkm\/h\b/gi, 'ki lô mét trên giờ')
-    .replace(/\bm\/s\b/gi, 'mét trên giây')
-    .replace(/\bm2\b|\bm²\b/gi, 'mét vuông')
-    .replace(/\bkg\b/gi, 'ki lô gam')
-    .replace(/&/g, ' và ')
-    .replace(/@/g, ' a còng ')
-    .replace(/\+/g, ' cộng ')
-    .replace(/(\d)\s*-\s*(\d)/g, '$1 đến $2')
+    .replace(/\u00b0\s*C\b/gi, ' do C')
+    .replace(/\bdo\s*C\b/gi, 'do xe')
+    .replace(/\u00b0\s*F\b/gi, ' do F')
+    .replace(/\u00b0/g, ' do ')
+    .replace(/%/g, ' phan tram')
+    .replace(/\bkm\/h\b/gi, 'ki lo met tren gio')
+    .replace(/\bm\/s\b/gi, 'met tren giay')
+    .replace(/\bm2\b|\bm\u00b2\b/gi, 'met vuong')
+    .replace(/\bkg\b/gi, 'ki lo gam')
+    .replace(/&/g, ' va ')
+    .replace(/@/g, ' a cong ')
+    .replace(/\+/g, ' cong ')
+    .replace(/(\d)\s*-\s*(\d)/g, '$1 den $2')
     .replace(/\.\.\./g, ', ')
-    .replace(/\b(đèn|quạt|cửa) 1\b/gi, '$1 một')
-    .replace(/\b(đèn|quạt|cửa) 2\b/gi, '$1 hai')
-    // Phiên âm từ tiếng Anh thông dụng sang tiếng Việt để giọng đọc vi-VN không bị ngọng
-    .replace(/\bjarvis\b/gi, 'Gia vít')
+    .replace(/\b(den|quat|cua) 1\b/gi, '$1 mot')
+    .replace(/\b(den|quat|cua) 2\b/gi, '$1 hai')
+    .replace(/\bjarvis\b/gi, 'Gia vit')
     .replace(/\bapi\b/gi, 'A P I')
-    .replace(/\bgroq\b/gi, 'Gờ rốc')
+    .replace(/\bgroq\b/gi, 'Go roc')
     .replace(/\bllama\b/gi, 'La ma')
-    .replace(/\bmqtt\b/gi, 'Mờ Quy Tê Tê')
-    .replace(/\bhivemq\b/gi, 'Hai vờ Mờ Quy')
-    .replace(/\bsmart\s*home\b/gi, 'Nhà thông minh')
-    .replace(/\bsmart\b/gi, 'thông minh')
-    .replace(/\bon\b/gi, 'bật')
-    .replace(/\boff\b/gi, 'tắt')
-    .replace(/\bled\b/gi, 'lét')
-    .replace(/\besp32\b/gi, 'E ét pê ba hai')
-    .replace(/\besp\b/gi, 'E ét pê')
+    .replace(/\bmqtt\b/gi, 'Mo Quy Te Te')
+    .replace(/\bhivemq\b/gi, 'Hai vo Mo Quy')
+    .replace(/\bsmart\s*home\b/gi, 'Nha thong minh')
+    .replace(/\bsmart\b/gi, 'thong minh')
+    .replace(/\bon\b/gi, 'bat')
+    .replace(/\boff\b/gi, 'tat')
+    .replace(/\bled\b/gi, 'let')
+    .replace(/\besp32\b/gi, 'E et pe ba hai')
+    .replace(/\besp\b/gi, 'E et pe')
     .replace(/\bwifi\b/gi, 'Quai phai')
     .replace(/\bwi-fi\b/gi, 'Quai phai');
 }
@@ -1211,55 +1208,21 @@ function speak(text, langCode = 'vi-VN') {
     return;
   }
   
-  // Hủy âm thanh đang phát và dọn dẹp các bộ hẹn giờ trước đó
+  // Huy am thanh dang phat va don dep cac bo hen gio truoc do
   window.speechSynthesis.cancel();
   if (activeSpeechTimeout) {
     clearTimeout(activeSpeechTimeout);
     activeSpeechTimeout = null;
   }
 
-  let cleanText = text;
-  // Chuẩn hóa văn bản đối với Tiếng Việt
+  let cleanText = stripMarkdownAndEmoji(text);
   if (langCode.startsWith('vi')) {
-    cleanText = text
-      .replace(/°\s*C/gi, ' độ C')
-      .replace(/độ\s*C/gi, 'độ xê')
-      .replace(/°\s*F/gi, ' độ F')
-      .replace(/độ\s*F/gi, 'độ ép')
-      .replace(/°/g, ' độ ')
-      .replace(/%/g, ' phần trăm')
-      .replace(/km\/h/gi, 'ki lô mét trên giờ')
-      .replace(/m\/s/gi, 'mét trên giây')
-      .replace(/m2|m²/gi, 'mét vuông')
-      .replace(/kg/gi, 'ki lô gam')
-      .replace(/&/g, ' và ')
-      .replace(/@/g, ' a còng ')
-      .replace(/\+/g, ' cộng ')
-      .replace(/(\d)\s*-\s*(\d)/g, '$1 đến $2')
-      .replace(/\.\.\./g, ', ')
-      .replace(/(đèn|quạt|cửa) 1/gi, '$1 một')
-      .replace(/(đèn|quạt|cửa) 2/gi, '$1 hai')
-      // Phiên âm từ tiếng Anh thông dụng sang tiếng Việt để giọng đọc vi-VN không bị ngọng
-      .replace(/jarvis/gi, 'Gia vít')
-      .replace(/api/gi, 'A P I')
-      .replace(/groq/gi, 'Gờ rốc')
-      .replace(/llama/gi, 'La ma')
-      .replace(/mqtt/gi, 'Mờ Quy Tê Tê')
-      .replace(/hivemq/gi, 'Hai vờ Mờ Quy')
-      .replace(/smart\s*home/gi, 'Nhà thông minh')
-      .replace(/smart/gi, 'thông minh')
-      .replace(/on/gi, 'bật')
-      .replace(/off/gi, 'tắt')
-      .replace(/led/gi, 'lét')
-      .replace(/esp32/gi, 'E ét pê ba hai')
-      .replace(/esp/gi, 'E ét pê')
-      .replace(/wifi/gi, 'Quai phai')
-      .replace(/wi-fi/gi, 'Quai phai');
+    cleanText = normalizeSymbolsVi(cleanText);
   } else {
-    cleanText = cleanText.replace(/°\s*C/gi, ' degrees C').replace(/°\s*F/gi, ' degrees F').replace(/%/g, ' percent');
+    cleanText = cleanText.replace(/\\u00b0\\s*C\\b/gi, ' degrees C').replace(/\\u00b0\\s*F\\b/gi, ' degrees F').replace(/%/g, ' percent');
   }
 
-  // Tạo đối tượng Utterance và lưu vào biến toàn cục để tránh bị Garbage Collection
+  // Tao doi tuong Utterance va luu vao bien toan cuc de tranh bi Garbage Collection
   activeUtterance = new SpeechSynthesisUtterance(cleanText);
   activeUtterance.lang = langCode;
   activeUtterance.rate = langCode.startsWith('vi') ? 1.05 : 1.0;
@@ -1289,7 +1252,7 @@ function speak(text, langCode = 'vi-VN') {
     console.log('Selected Voice:', targetVoice.name, '(' + langCode + ')', 'score:', scoreVoice(targetVoice));
   }
 
-  // Sử dụng setTimeout 250ms để giải quyết triệt để lỗi bất đồng bộ race condition của Chrome
+  // Su dung setTimeout 250ms de giai quyet triet de loi bat dong bo race condition cua Chrome
   activeSpeechTimeout = setTimeout(() => {
     if (!isConversationActive) {
       window.speechSynthesis.speak(activeUtterance);
@@ -1298,17 +1261,17 @@ function speak(text, langCode = 'vi-VN') {
 
     setLiveState('SPEAKING');
     
-    // Watchdog safety timer phòng trường hợp onend không kích hoạt do lỗi hệ thống TTS của Chrome
+    // Watchdog safety timer phong truong hop onend khong kich hoat do loi he thong TTS cua Chrome
     let watchdogTimer = setTimeout(() => {
-      console.warn('Watchdog kích hoạt: TTS kết thúc chậm hoặc bị đơ.');
+      console.warn('Watchdog kich hoat: TTS ket thuc cham hoac bi do.');
       if (isConversationActive && liveState === 'SPEAKING') {
         startSilenceTimer();
       }
-    }, Math.max(4000, cleanText.length * 100 + 2000)); // 100ms mỗi ký tự + 2s dự phòng
+    }, Math.max(4000, cleanText.length * 100 + 2000)); // 100ms moi ky tu + 2s du phong
 
     activeUtterance.onend = () => {
       clearTimeout(watchdogTimer);
-      console.log('AI đã nói xong, bắt đầu chờ 5s');
+      console.log('AI da noi xong, bat dau cho 5s');
       if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING') {
         startSilenceTimer();
       }
@@ -1316,7 +1279,7 @@ function speak(text, langCode = 'vi-VN') {
 
     activeUtterance.onerror = (e) => {
       clearTimeout(watchdogTimer);
-      console.warn('Lỗi phát âm thanh:', e);
+      console.warn('Loi phat am thanh:', e);
       if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING' && e.error !== 'interrupted') {
         startSilenceTimer();
       }
