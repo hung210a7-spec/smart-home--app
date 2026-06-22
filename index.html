@@ -1075,8 +1075,29 @@ User: "tắt hết đi ngủ" → {"commands":[{"device":"all","action":"off"}],
 }
 
 // ============================================================
-//  CORE AI FUNCTION — nâng cấp toàn diện
+//  CORE AI FUNCTION — đã debug & fix 3 lỗi gây đứng máy
 // ============================================================
+
+// ── Hằng số timeout ──────────────────────────────────────────
+const TIMEOUT_70B = 12000;  // 12s cho 70B (nhanh trên Groq nhưng thêm buffer)
+const TIMEOUT_8B  =  8000;  // 8s  cho 8B
+
+// Tạo fetch có timeout dùng AbortController
+// FIX #2: Không có timeout → fetch treo vô tận nếu 70B rate-limited
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timer);
+    return res;
+  } catch (e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error(`Timeout sau ${timeoutMs/1000}s — model phản hồi quá chậm`);
+    throw e;
+  }
+}
+
 async function processLiveSpeech(text) {
   addLog('user', '🎙️ "' + text + '"');
   const apiKey = localStorage.getItem('sh_groqkey');
@@ -1086,91 +1107,104 @@ async function processLiveSpeech(text) {
     return;
   }
 
-  // Thêm tin nhắn user vào lịch sử
   addToHistory('user', text);
+  let success = false;  // Flag để finally biết có cần gọi startSilenceTimer không
 
-  // Xây dựng messages array đúng chuẩn OpenAI:
-  // [system] + [lịch sử N-1 lượt trước] + [user hiện tại]
-  const historyToSend = conversationHistory.slice(0, -1); // Bỏ user message cuối (đã trong history)
-  const messages = [
-    { role: 'system', content: buildSystemPrompt() },
-    ...historyToSend,
-    { role: 'user', content: text }
-  ];
-
+  // FIX #1: Toàn bộ logic (kể cả buildSystemPrompt) nằm TRONG try/catch
+  // Trước đây buildSystemPrompt() gọi ngoài try → nếu throw → app đứng mãi
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey
-      },
-      body: JSON.stringify({
-        // ── MODEL NÂNG CẤP: 70B thay vì 8B ──────────────────
-        // llama-3.3-70b-versatile: thông minh hơn ~8x, tiếng Anh/Việt xuất sắc
-        model: 'llama-3.3-70b-versatile',
-        messages: messages,
-        temperature: 0.5,          // Cao hơn chút để hội thoại tự nhiên hơn
-        max_tokens: 512,           // Đủ cho câu trả lời hội thoại dài
-        response_format: { type: 'json_object' }
-      })
-    });
+    const systemPrompt  = buildSystemPrompt();  // ← đã nằm trong try
+    const historyToSend = conversationHistory.slice(0, -1);
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...historyToSend,
+      { role: 'user', content: text }
+    ];
 
-    const data = await res.json();
-    console.log('[Groq 70B]', JSON.stringify(data).slice(0, 300));
-
-    if (data.error) {
-      // Nếu model bận → fallback sang 8b-instant
-      if (data.error.code === 'model_not_available' || data.error.code === 'rate_limit_exceeded') {
-        addLog('action', '⚠️ 70B bận, fallback sang 8B...');
-        await processWithFallbackModel(text, messages);
-      } else {
-        addLog('error', '❌ API: ' + data.error.message);
-        if (isConversationActive) startSilenceTimer();
-      }
-      return;
-    }
-
-    const raw = data.choices?.[0]?.message?.content?.trim();
-    if (!raw) {
-      addLog('error', '❌ Groq không trả về nội dung.');
-      conversationHistory.pop(); // Xóa user message thất bại
-      if (isConversationActive) startSilenceTimer();
-      return;
-    }
-
+    const raw = await callGroq(messages, 'llama-3.3-70b-versatile', TIMEOUT_70B);
     handleGroqResponse(raw, text);
+    success = true;
 
-  } catch(err) {
-    addLog('error', '❌ ' + err.message);
-    document.getElementById('voiceStatus').textContent = '❌ Lỗi kết nối';
-    conversationHistory.pop(); // Xóa user message thất bại
-    if (isConversationActive) startSilenceTimer();
+  } catch (err) {
+    // Phân loại lỗi để hiển thị thông báo rõ ràng
+    const msg = err.message || '';
+    if (msg.includes('Timeout') || msg.includes('rate') || msg.includes('429') || msg.includes('overloaded')) {
+      addLog('action', '⚡ 70B bận/chậm → thử 8B-instant...');
+      document.getElementById('voiceStatus').textContent = '⚡ Chuyển sang model nhanh hơn...';
+      success = await tryFallback8B(text);
+    } else {
+      addLog('error', '❌ ' + msg);
+      document.getElementById('voiceStatus').textContent = '❌ ' + msg.slice(0, 60);
+    }
+  } finally {
+    // FIX #3: Đảm bảo PROCESSING state LUÔN được thoát dù lỗi hay thành công
+    if (!success && isConversationActive) {
+      conversationHistory.pop(); // Xóa user msg thất bại
+      startSilenceTimer();
+    }
   }
 }
 
-// Fallback sang model nhỏ hơn nếu 70B không khả dụng
-async function processWithFallbackModel(text, messages) {
+// Gọi Groq API — tách riêng để dùng chung cho cả 2 model
+// FIX #2b (bonus): Check error.type lẫn error.code vì Groq dùng cả 2 tùy version
+async function callGroq(messages, model, timeoutMs) {
   const apiKey = localStorage.getItem('sh_groqkey');
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetchWithTimeout(
+    'https://api.groq.com/openai/v1/chat/completions',
+    {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: messages,
-        temperature: 0.3,
+        model,
+        messages,
+        temperature: model.includes('70b') ? 0.5 : 0.3,
         max_tokens: 512,
         response_format: { type: 'json_object' }
       })
-    });
-    const data = await res.json();
-    if (data.error) { addLog('error', '❌ Fallback lỗi: ' + data.error.message); if (isConversationActive) startSilenceTimer(); return; }
-    const raw = data.choices?.[0]?.message?.content?.trim();
-    if (raw) handleGroqResponse(raw, text);
-  } catch(e) {
-    addLog('error', '❌ ' + e.message);
-    if (isConversationActive) startSilenceTimer();
+    },
+    timeoutMs
+  );
+
+  const data = await res.json();
+  console.log(`[Groq ${model}]`, JSON.stringify(data).slice(0, 200));
+
+  if (data.error) {
+    // FIX #3: Groq dùng error.type chứ không phải error.code như OpenAI
+    // Trước đây check sai field → fallback không bao giờ kích hoạt
+    const errType = data.error.type || data.error.code || '';
+    const errMsg  = data.error.message || JSON.stringify(data.error);
+    if (
+      res.status === 429 ||
+      errType.includes('rate') || errType.includes('overload') ||
+      errMsg.includes('rate') || errMsg.includes('overload') || errMsg.includes('capacity')
+    ) {
+      throw new Error('rate_limit: ' + errMsg.slice(0, 80));
+    }
+    throw new Error('API: ' + errMsg.slice(0, 100));
+  }
+
+  const raw = data.choices?.[0]?.message?.content?.trim();
+  if (!raw) throw new Error('Groq không trả về nội dung');
+  return raw;
+}
+
+// Fallback sang 8B khi 70B bị timeout/rate-limit
+async function tryFallback8B(text) {
+  try {
+    const systemPrompt  = buildSystemPrompt();
+    const historyToSend = conversationHistory.slice(0, -1);
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...historyToSend,
+      { role: 'user', content: text }
+    ];
+    const raw = await callGroq(messages, 'llama-3.1-8b-instant', TIMEOUT_8B);
+    handleGroqResponse(raw, text);
+    return true;  // thành công
+  } catch (e) {
+    addLog('error', '❌ Cả 2 model thất bại: ' + e.message);
+    speak('Xin lỗi, hệ thống AI đang bận. Bạn thử lại sau nhé.', 'vi-VN');
+    return false;
   }
 }
 
