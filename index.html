@@ -1154,53 +1154,52 @@ function pickBestVoice(matchedVoices) {
 // bỏ định dạng Markdown (AI đôi khi lỡ trả về **đậm**, _nghiêng_, # tiêu đề...),
 // bỏ emoji, gọn khoảng trắng/dấu câu thừa.
 function stripMarkdownAndEmoji(text) {
+  if (!text) return '';
   return text
     .replace(/\*\*(.*?)\*\*/g, '$1')
     .replace(/\*(.*?)\*/g, '$1')
     .replace(/_(.*?)_/g, '$1')
     .replace(/`{1,3}([^`]*)`{1,3}/g, '$1')
     .replace(/^#{1,6}\s*/gm, '')
-    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}]/gu, '')
+    .replace(/\p{Emoji_Presentation}/gu, '')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n{2,}/g, '. ')
     .trim();
 }
 
 // Chuẩn hoá ký hiệu/đơn vị sang dạng đọc được — đây là phần chính khắc phục lỗi
-// "ngọng" và bỏ sót ký tự như °C, %, đơn vị viết tắt...
 function normalizeSymbolsVi(text) {
+  if (!text) return '';
   return text
-    .replace(/°\s*C\b/gi, ' độ C')
-    .replace(/\bđộ\s*C\b/gi, 'độ xê')
-    .replace(/°\s*F\b/gi, ' độ F')
-    .replace(/\bđộ\s*F\b/gi, 'độ ép')
-    .replace(/°/g, ' độ ')
-    .replace(/%/g, ' phần trăm')
-    .replace(/\bkm\/h\b/gi, 'ki lô mét trên giờ')
-    .replace(/\bm\/s\b/gi, 'mét trên giây')
-    .replace(/\bm2\b|\bm²\b/gi, 'mét vuông')
-    .replace(/\bkg\b/gi, 'ki lô gam')
-    .replace(/&/g, ' và ')
-    .replace(/@/g, ' a còng ')
-    .replace(/\+/g, ' cộng ')
-    .replace(/(\d)\s*-\s*(\d)/g, '$1 đến $2')
+    .replace(/\u00b0\s*C\b/gi, ' do C')
+    .replace(/\bdo\s*C\b/gi, 'do xe')
+    .replace(/\u00b0\s*F\b/gi, ' do F')
+    .replace(/\u00b0/g, ' do ')
+    .replace(/%/g, ' phan tram')
+    .replace(/\bkm\/h\b/gi, 'ki lo met tren gio')
+    .replace(/\bm\/s\b/gi, 'met tren giay')
+    .replace(/\bm2\b|\bm\u00b2\b/gi, 'met vuong')
+    .replace(/\bkg\b/gi, 'ki lo gam')
+    .replace(/&/g, ' va ')
+    .replace(/@/g, ' a cong ')
+    .replace(/\+/g, ' cong ')
+    .replace(/(\d)\s*-\s*(\d)/g, '\ den \')
     .replace(/\.\.\./g, ', ')
-    .replace(/\b(đèn|quạt|cửa) 1\b/gi, '$1 một')
-    .replace(/\b(đèn|quạt|cửa) 2\b/gi, '$1 hai')
-    // Phiên âm từ tiếng Anh thông dụng sang tiếng Việt để giọng đọc vi-VN không bị ngọng
-    .replace(/\bjarvis\b/gi, 'Gia vít')
+    .replace(/\b(den|quat|cua) 1\b/gi, '\ mot')
+    .replace(/\b(den|quat|cua) 2\b/gi, '\ hai')
+    .replace(/\bjarvis\b/gi, 'Gia vit')
     .replace(/\bapi\b/gi, 'A P I')
-    .replace(/\bgroq\b/gi, 'Gờ rốc')
+    .replace(/\bgroq\b/gi, 'Go roc')
     .replace(/\bllama\b/gi, 'La ma')
-    .replace(/\bmqtt\b/gi, 'Mờ Quy Tê Tê')
-    .replace(/\bhivemq\b/gi, 'Hai vờ Mờ Quy')
-    .replace(/\bsmart\s*home\b/gi, 'Nhà thông minh')
-    .replace(/\bsmart\b/gi, 'thông minh')
-    .replace(/\bon\b/gi, 'bật')
-    .replace(/\boff\b/gi, 'tắt')
-    .replace(/\bled\b/gi, 'lét')
-    .replace(/\besp32\b/gi, 'E ét pê ba hai')
-    .replace(/\besp\b/gi, 'E ét pê')
+    .replace(/\bmqtt\b/gi, 'Mo Quy Te Te')
+    .replace(/\bhivemq\b/gi, 'Hai vo Mo Quy')
+    .replace(/\bsmart\s*home\b/gi, 'Nha thong minh')
+    .replace(/\bsmart\b/gi, 'thong minh')
+    .replace(/\bon\b/gi, 'bat')
+    .replace(/\boff\b/gi, 'tat')
+    .replace(/\bled\b/gi, 'let')
+    .replace(/\besp32\b/gi, 'E et pe ba hai')
+    .replace(/\besp\b/gi, 'E et pe')
     .replace(/\bwifi\b/gi, 'Quai phai')
     .replace(/\bwi-fi\b/gi, 'Quai phai');
 }
