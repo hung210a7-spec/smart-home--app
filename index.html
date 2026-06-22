@@ -994,7 +994,7 @@ Câu nói của người dùng: "${text}"`;
           'Authorization': 'Bearer ' + apiKey
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
+          model: 'llama-3.3-70b-versatile',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.1,
           response_format: { type: "json_object" }
@@ -1210,30 +1210,66 @@ function speak(text, langCode = 'vi-VN') {
     if (isConversationActive) startSilenceTimer();
     return;
   }
+  
+  // Hủy âm thanh đang phát và dọn dẹp các bộ hẹn giờ trước đó
   window.speechSynthesis.cancel();
-
-  let cleanText = stripMarkdownAndEmoji(text);
-  if (langCode.startsWith('vi')) {
-    cleanText = normalizeSymbolsVi(cleanText);
-  } else {
-    // Với ngôn ngữ khác vẫn nên đọc được các ký hiệu phổ biến thay vì bỏ qua
-    cleanText = cleanText.replace(/°\s*C\b/gi, ' degrees C').replace(/°\s*F\b/gi, ' degrees F').replace(/%/g, ' percent');
+  if (activeSpeechTimeout) {
+    clearTimeout(activeSpeechTimeout);
+    activeSpeechTimeout = null;
   }
 
-  const utterance = new SpeechSynthesisUtterance(cleanText);
-  utterance.lang = langCode;
-  
-  // Tăng nhẹ tốc độ đọc đối với tiếng Việt
-  utterance.rate = langCode.startsWith('vi') ? 1.05 : 1.0;
-  utterance.pitch = 1.0;
-  utterance.volume = 1.0;
+  let cleanText = text;
+  // Chuẩn hóa văn bản đối với Tiếng Việt
+  if (langCode.startsWith('vi')) {
+    cleanText = text
+      .replace(/°\s*C/gi, ' độ C')
+      .replace(/độ\s*C/gi, 'độ xê')
+      .replace(/°\s*F/gi, ' độ F')
+      .replace(/độ\s*F/gi, 'độ ép')
+      .replace(/°/g, ' độ ')
+      .replace(/%/g, ' phần trăm')
+      .replace(/km\/h/gi, 'ki lô mét trên giờ')
+      .replace(/m\/s/gi, 'mét trên giây')
+      .replace(/m2|m²/gi, 'mét vuông')
+      .replace(/kg/gi, 'ki lô gam')
+      .replace(/&/g, ' và ')
+      .replace(/@/g, ' a còng ')
+      .replace(/\+/g, ' cộng ')
+      .replace(/(\d)\s*-\s*(\d)/g, '$1 đến $2')
+      .replace(/\.\.\./g, ', ')
+      .replace(/(đèn|quạt|cửa) 1/gi, '$1 một')
+      .replace(/(đèn|quạt|cửa) 2/gi, '$1 hai')
+      // Phiên âm từ tiếng Anh thông dụng sang tiếng Việt để giọng đọc vi-VN không bị ngọng
+      .replace(/jarvis/gi, 'Gia vít')
+      .replace(/api/gi, 'A P I')
+      .replace(/groq/gi, 'Gờ rốc')
+      .replace(/llama/gi, 'La ma')
+      .replace(/mqtt/gi, 'Mờ Quy Tê Tê')
+      .replace(/hivemq/gi, 'Hai vờ Mờ Quy')
+      .replace(/smart\s*home/gi, 'Nhà thông minh')
+      .replace(/smart/gi, 'thông minh')
+      .replace(/on/gi, 'bật')
+      .replace(/off/gi, 'tắt')
+      .replace(/led/gi, 'lét')
+      .replace(/esp32/gi, 'E ét pê ba hai')
+      .replace(/esp/gi, 'E ét pê')
+      .replace(/wifi/gi, 'Quai phai')
+      .replace(/wi-fi/gi, 'Quai phai');
+  } else {
+    cleanText = cleanText.replace(/°\s*C/gi, ' degrees C').replace(/°\s*F/gi, ' degrees F').replace(/%/g, ' percent');
+  }
+
+  // Tạo đối tượng Utterance và lưu vào biến toàn cục để tránh bị Garbage Collection
+  activeUtterance = new SpeechSynthesisUtterance(cleanText);
+  activeUtterance.lang = langCode;
+  activeUtterance.rate = langCode.startsWith('vi') ? 1.05 : 1.0;
+  activeUtterance.pitch = 1.0;
+  activeUtterance.volume = 1.0;
 
   const voices = window.speechSynthesis.getVoices();
   const langPrefix = langCode.split('-')[0].toLowerCase();
   
   let targetVoice = null;
-
-  // 1. Kiểm tra lựa chọn thủ công từ localStorage
   const savedViVoice = localStorage.getItem('sh_vi_voice');
   const savedEnVoice = localStorage.getItem('sh_en_voice');
 
@@ -1243,37 +1279,51 @@ function speak(text, langCode = 'vi-VN') {
     targetVoice = voices.find(v => v.name === savedEnVoice);
   }
 
-  // 2. Nếu không chọn thủ công hoặc giọng thủ công không khả dụng, chấm điểm chất lượng
-  //    và tự động chọn giọng tốt nhất hiện có (ưu tiên giọng online/cloud).
   if (!targetVoice) {
     const matchedVoices = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
     targetVoice = pickBestVoice(matchedVoices);
   }
   
   if (targetVoice) {
-    utterance.voice = targetVoice;
+    activeUtterance.voice = targetVoice;
     console.log('Selected Voice:', targetVoice.name, '(' + langCode + ')', 'score:', scoreVoice(targetVoice));
   }
 
-  if (isConversationActive) {
-    setLiveState('SPEAKING');
+  // Sử dụng setTimeout 250ms để giải quyết triệt để lỗi bất đồng bộ race condition của Chrome
+  activeSpeechTimeout = setTimeout(() => {
+    if (!isConversationActive) {
+      window.speechSynthesis.speak(activeUtterance);
+      return;
+    }
 
-    utterance.onend = () => {
-      console.log('AI nói xong, bắt đầu chờ 5s');
+    setLiveState('SPEAKING');
+    
+    // Watchdog safety timer phòng trường hợp onend không kích hoạt do lỗi hệ thống TTS của Chrome
+    let watchdogTimer = setTimeout(() => {
+      console.warn('Watchdog kích hoạt: TTS kết thúc chậm hoặc bị đơ.');
+      if (isConversationActive && liveState === 'SPEAKING') {
+        startSilenceTimer();
+      }
+    }, Math.max(4000, cleanText.length * 100 + 2000)); // 100ms mỗi ký tự + 2s dự phòng
+
+    activeUtterance.onend = () => {
+      clearTimeout(watchdogTimer);
+      console.log('AI đã nói xong, bắt đầu chờ 5s');
       if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING') {
         startSilenceTimer();
       }
     };
 
-    utterance.onerror = (e) => {
+    activeUtterance.onerror = (e) => {
+      clearTimeout(watchdogTimer);
       console.warn('Lỗi phát âm thanh:', e);
       if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING' && e.error !== 'interrupted') {
         startSilenceTimer();
       }
     };
-  }
 
-  window.speechSynthesis.speak(utterance);
+    window.speechSynthesis.speak(activeUtterance);
+  }, 250);
 }
 
 // Đọc thử một câu mẫu chứa các ký tự/đơn vị hay bị đọc sai, để người dùng nghe và
