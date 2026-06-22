@@ -2,711 +2,1667 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Smart Home AI</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.4/mqtt.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --panel: #131419;
+  --panel-raised: #1b1d24;
+  --panel-inset: #0c0d11;
+  --brass: #c89b5c;
+  --brass-bright: #e8c285;
+  --brass-dim: #6f5a3a;
+  --signal-green: #5fbf8d;
+  --signal-amber: #e0a458;
+  --signal-red: #c9694f;
+  --signal-blue: #6b9bd1;
+  --ink: #ece8e0;
+  --ink-dim: #8b8d96;
+  --line: rgba(200, 155, 92, 0.14);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
 body {
-  font-family: 'Segoe UI', sans-serif;
-  background: radial-gradient(circle at top right, #1b1035, #080810);
-  color: #e2e8f0; min-height:100vh; padding-bottom:40px; overflow-x:hidden;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(ellipse 700px 420px at 50% -8%, rgba(200,155,92,0.07), transparent 60%),
+    var(--panel);
+  color: var(--ink);
+  min-height: 100vh;
+  padding-bottom: 40px;
+  overflow-x: hidden;
 }
-.header { padding:28px 20px 8px; text-align:center; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+:focus-visible { outline: 2px solid var(--brass-bright); outline-offset: 2px; border-radius: 4px; }
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+  padding: 30px 20px 14px;
+  text-align: center;
+  animation: fadeInDown 0.6s ease both;
+}
+.header .eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.66em;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--brass-dim);
+  margin-bottom: 8px;
+}
 .header h1 {
-  font-size:1.7em; font-weight:800;
-  background:linear-gradient(90deg,#a78bfa,#3b82f6,#60a5fa);
-  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-  letter-spacing:3px; text-transform:uppercase;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2em;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--ink);
 }
-.status-bar { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; font-size:0.8em; color:#94a3b8; }
-.dot { width:10px; height:10px; border-radius:50%; background:#475569; transition:all 0.3s; }
-.dot.green  { background:#10b981; box-shadow:0 0 10px #10b981; }
-.dot.yellow { background:#f59e0b; box-shadow:0 0 10px #f59e0b; }
+.header h1 .accent { color: var(--brass-bright); }
+.header::after {
+  content: '';
+  display: block;
+  width: 44px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brass), transparent);
+  margin: 14px auto 0;
+}
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72em;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #34363e;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.6);
+  transition: all 0.3s;
+}
+.dot.green  { background: var(--signal-green); box-shadow: 0 0 8px var(--signal-green); }
+.dot.yellow { background: var(--signal-amber); box-shadow: 0 0 8px var(--signal-amber); }
 
-/* PANEL */
-.panel {
-  background:rgba(30,30,58,0.5); border:1px solid rgba(139,92,246,0.15);
-  backdrop-filter:blur(20px); border-radius:20px; margin:14px; padding:18px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.3);
+.setup-panel {
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin: 14px 16px;
+  padding: 20px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.02);
 }
-.panel h3 { font-size:0.88em; color:#a78bfa; margin-bottom:14px; font-weight:600; text-transform:uppercase; letter-spacing:1px; }
-.ig { margin-bottom:12px; }
-.ig label { font-size:0.75em; color:#94a3b8; display:block; margin-bottom:5px; font-weight:500; }
-.ig input, .ig select {
-  width:100%; background:rgba(15,15,30,0.7); border:1px solid rgba(139,92,246,0.2);
-  border-radius:10px; padding:10px 14px; color:#f1f5f9; font-size:0.9em; outline:none; transition:all 0.3s;
+.setup-panel h3 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68em;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--brass);
+  margin-bottom: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.ig input:focus, .ig select:focus { border-color:#8b5cf6; box-shadow:0 0 10px rgba(139,92,246,0.25); }
-.btn-p {
-  width:100%; padding:12px; background:linear-gradient(90deg,#8b5cf6,#3b82f6);
-  border:none; border-radius:12px; color:white; font-size:0.95em; font-weight:700;
-  cursor:pointer; transition:all 0.3s; box-shadow:0 4px 15px rgba(139,92,246,0.3);
+.setup-panel h3::before { content:''; width:14px; height:1px; background: var(--brass-dim); }
+.input-group { margin-bottom:14px; }
+.input-group label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size:0.68em;
+  color:var(--ink-dim);
+  display:block;
+  margin-bottom:7px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
 }
-.btn-p:active { transform:scale(0.97); }
+.input-group input, .input-group select {
+  width:100%;
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px 14px;
+  color:var(--ink);
+  font-family: 'Inter', sans-serif;
+  font-size:0.9em;
+  outline:none;
+  transition: all 0.25s;
+}
+.input-group input:focus, .input-group select:focus {
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px rgba(200,155,92,0.14);
+}
+.btn-connect {
+  width:100%;
+  padding:12px;
+  background: linear-gradient(180deg, var(--brass-bright), var(--brass));
+  border:none;
+  border-radius:11px;
+  color:#1a1308;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size:0.95em;
+  font-weight:700;
+  cursor:pointer;
+  margin-top:4px;
+  transition: all 0.25s;
+  box-shadow: 0 4px 14px rgba(200,155,92,0.3);
+  letter-spacing: 0.3px;
+}
+.btn-connect:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(200,155,92,0.45);
+}
 
-/* MIC */
-.voice-section { text-align:center; padding:20px 16px 12px; }
-.voice-hint { font-size:0.85em; color:#94a3b8; margin-bottom:16px; }
+.voice-section { text-align:center; padding:26px 16px 12px; }
+.voice-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size:0.72em;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color:var(--ink-dim);
+  margin-bottom:18px;
+}
+
+/* Mic Console Button — signature element */
 .mic-btn {
-  width:120px; height:120px; border-radius:50%; border:none;
-  font-size:3em; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  transition:all 0.35s cubic-bezier(0.4,0,0.2,1);
-  margin:0 auto 18px; outline:none; color:white;
-  background:linear-gradient(135deg,#7c3aed,#2563eb);
-  box-shadow:0 4px 20px rgba(124,58,237,0.3);
-  -webkit-touch-callout:none; user-select:none;
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  border: 3px solid var(--brass-dim);
+  background: radial-gradient(circle at 34% 28%, #2a2c34, #15161b 72%);
+  font-size: 2.3em;
+  cursor: pointer;
+  margin: 0 auto 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 6px 22px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.05), inset 0 -6px 12px rgba(0,0,0,0.45);
+  position: relative;
+  outline: none;
+  color: var(--brass-bright);
 }
-.mic-btn:active { transform:scale(0.93); }
-.mic-btn:disabled { background:#2a2a40; box-shadow:none; cursor:not-allowed; opacity:0.45; }
+.mic-btn:hover { transform: scale(1.04); border-color: var(--brass); }
+.mic-btn:disabled { background:#1b1c21; border-color:#2a2b30; box-shadow:none; cursor:not-allowed; opacity:0.55; color:#5a5c64; }
 
-.mic-btn.s-listening { background:linear-gradient(135deg,#a78bfa,#3b82f6); animation:ring-p 1.8s infinite; }
-@keyframes ring-p {
-  0%   { box-shadow:0 0 0 0 rgba(139,92,246,0.7); }
-  70%  { box-shadow:0 0 0 20px rgba(139,92,246,0); }
-  100% { box-shadow:0 0 0 0 rgba(139,92,246,0); }
+@keyframes sonar-ping {
+  0%   { transform: scale(1);   opacity: 0.65; }
+  100% { transform: scale(1.55); opacity: 0; }
 }
-.mic-btn.s-user { background:linear-gradient(135deg,#ec4899,#8b5cf6); animation:ring-pk 0.65s infinite; }
-@keyframes ring-pk {
-  0%   { box-shadow:0 0 0 0 rgba(236,72,153,0.8); transform:scale(1); }
-  50%  { box-shadow:0 0 0 14px rgba(236,72,153,0); transform:scale(1.07); }
-  100% { box-shadow:0 0 0 0 rgba(236,72,153,0); transform:scale(1); }
+.mic-btn.state-listening,
+.mic-btn.state-user-speaking,
+.mic-btn.state-processing,
+.mic-btn.state-speaking,
+.mic-btn.state-waiting {
+  border-color: var(--ring-color);
+  box-shadow: 0 6px 24px var(--ring-shadow), inset 0 2px 4px rgba(255,255,255,0.06);
 }
-.mic-btn.s-proc { background:linear-gradient(135deg,#f59e0b,#d97706); animation:glow-o 1s infinite alternate; }
-@keyframes glow-o { from { box-shadow:0 0 15px rgba(245,158,11,0.4); } to { box-shadow:0 0 35px rgba(245,158,11,0.9); } }
-.mic-btn.s-speak { background:linear-gradient(135deg,#10b981,#06b6d4); animation:ring-g 1.4s infinite; }
-@keyframes ring-g {
-  0%   { box-shadow:0 0 0 0 rgba(16,185,129,0.7); }
-  70%  { box-shadow:0 0 0 22px rgba(16,185,129,0); }
-  100% { box-shadow:0 0 0 0 rgba(16,185,129,0); }
+.mic-btn.state-listening::after,
+.mic-btn.state-user-speaking::after,
+.mic-btn.state-processing::after,
+.mic-btn.state-speaking::after,
+.mic-btn.state-waiting::after {
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  border: 2px solid var(--ring-color);
+  animation: sonar-ping var(--ring-speed, 1.6s) ease-out infinite;
 }
-.mic-btn.s-wait { background:linear-gradient(135deg,#eab308,#f97316); animation:ring-a 1s infinite; }
-@keyframes ring-a {
-  0%   { box-shadow:0 0 0 0 rgba(234,179,8,0.6); }
-  70%  { box-shadow:0 0 0 14px rgba(234,179,8,0); }
-  100% { box-shadow:0 0 0 0 rgba(234,179,8,0); }
-}
-
-/* VAD METER */
-.vad-meter {
-  width:180px; height:6px; background:rgba(255,255,255,0.08);
-  border-radius:4px; margin:0 auto 12px; overflow:hidden; display:none;
-}
-.vad-bar { height:100%; width:0%; border-radius:4px; transition:width 0.05s; background:linear-gradient(90deg,#10b981,#06b6d4); }
+.mic-btn.state-listening     { --ring-color: var(--signal-blue);   --ring-shadow: rgba(107,155,209,0.35); --ring-speed: 1.9s; }
+.mic-btn.state-user-speaking { --ring-color: var(--brass-bright);  --ring-shadow: rgba(232,194,133,0.4);  --ring-speed: 0.9s; }
+.mic-btn.state-processing    { --ring-color: var(--signal-amber);  --ring-shadow: rgba(224,164,88,0.4);   --ring-speed: 1.1s; }
+.mic-btn.state-speaking      { --ring-color: var(--signal-green);  --ring-shadow: rgba(95,191,141,0.4);   --ring-speed: 1.4s; }
+.mic-btn.state-waiting       { --ring-color: var(--signal-red);    --ring-shadow: rgba(201,105,79,0.4);   --ring-speed: 1s; }
 
 .voice-status {
-  font-size:0.95em; color:#a78bfa; min-height:26px;
-  margin-bottom:10px; font-weight:600; text-align:center; padding:0 16px;
-}
-.interim-box {
-  font-size:0.88em; color:#c084fc; font-style:italic; text-align:center;
-  background:rgba(139,92,246,0.06); border:1px solid rgba(139,92,246,0.12);
-  border-radius:12px; margin:0 16px 14px; padding:10px 16px; min-height:40px;
-  display:flex; align-items:center; justify-content:center;
+  font-family: 'Inter', sans-serif;
+  font-size:0.95em;
+  color: var(--brass-bright);
+  min-height:28px;
+  margin-bottom:12px;
+  font-weight: 600;
+  padding: 0 20px;
+  text-align: center;
 }
 
-/* CHAT LOG */
 .chat-log {
-  background:rgba(15,15,30,0.55); border:1px solid rgba(139,92,246,0.1);
-  border-radius:18px; margin:0 14px 14px; padding:14px;
-  min-height:130px; max-height:210px; overflow-y:auto;
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin: 0 16px 16px;
+  padding: 14px 16px;
+  min-height: 140px;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.55);
+  font-family: 'JetBrains Mono', monospace;
 }
-.cm { font-size:0.84em; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.05); line-height:1.6; }
-.cm:last-child { border-bottom:none; }
-.cm .t { color:#64748b; font-size:0.85em; margin-right:6px; }
-.cm .u { color:#60a5fa; font-weight:600; }
-.cm .a { color:#34d399; font-weight:600; }
-.cm .x { color:#c084fc; font-weight:500; }
-.cm .e { color:#f87171; font-weight:500; }
+.chat-msg { font-size:0.82em; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.04); line-height:1.6; }
+.chat-msg:last-child { border-bottom:none; }
+.chat-msg .time { color:#5e6068; font-size:0.85em; margin-right:8px; }
+.chat-msg .user   { color: var(--signal-blue); font-weight: 600; }
+.chat-msg .ai     { color: var(--signal-green); font-weight: 600; }
+.chat-msg .action { color: var(--brass-bright); font-weight: 500; }
+.chat-msg .error  { color: var(--signal-red); font-weight: 500; }
 
-/* DEVICES */
-.dg { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:0 14px; }
-.dc {
-  background:linear-gradient(135deg,rgba(30,30,58,0.65),rgba(15,15,30,0.75));
-  border:1px solid rgba(139,92,246,0.15); border-radius:18px;
-  padding:18px 14px; text-align:center; transition:all 0.3s; cursor:pointer;
+.device-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin:0 16px;
 }
-.dc:active { transform:scale(0.95); }
-.dc.on { background:linear-gradient(135deg,rgba(139,92,246,0.2),rgba(59,130,246,0.25)); border-color:#8b5cf6; box-shadow:0 6px 25px rgba(139,92,246,0.3); }
-.dc .ic { font-size:2.2em; margin-bottom:8px; }
-.dc .nm { font-size:0.88em; font-weight:700; margin-bottom:6px; }
-.dc .st { font-size:0.74em; color:#94a3b8; background:rgba(15,15,30,0.8); padding:3px 12px; border-radius:20px; display:inline-block; font-weight:600; }
-.dc.on .st { color:#c084fc; background:rgba(139,92,246,0.2); }
-
-/* TABS */
-.tab-bar { display:flex; background:rgba(15,15,30,0.5); border:1px solid rgba(139,92,246,0.15); border-radius:14px; margin:14px 14px 8px; padding:4px; }
-.tb { flex:1; background:transparent; border:none; color:#94a3b8; padding:11px; font-size:0.88em; font-weight:700; border-radius:10px; cursor:pointer; transition:all 0.3s; }
-.tb.active { background:linear-gradient(90deg,#8b5cf6,#3b82f6); color:white; box-shadow:0 4px 15px rgba(139,92,246,0.3); }
-
-.hint-box { background:rgba(30,30,58,0.3); border:1px solid rgba(139,92,246,0.1); border-radius:16px; margin:14px 14px 0; padding:14px; }
-.hint-box h3 { font-size:0.83em; color:#a78bfa; margin-bottom:8px; font-weight:600; text-transform:uppercase; }
-.hc { font-size:0.77em; color:#94a3b8; padding:3px 0; line-height:1.5; }
-.hc span { color:#f1f5f9; font-weight:500; }
-
-/* RFID */
-.fr { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
-.fr input { flex:1; min-width:120px; background:rgba(15,15,30,0.6); border:1px solid rgba(139,92,246,0.2); border-radius:8px; padding:8px 12px; color:#e0e0e0; font-size:0.88em; outline:none; }
-.fr button { background:linear-gradient(90deg,#7c3aed,#2563eb); border:none; border-radius:8px; color:white; padding:8px 14px; font-size:0.85em; font-weight:600; cursor:pointer; white-space:nowrap; }
-.ct { width:100%; border-collapse:collapse; font-size:0.79em; }
-.ct th,.ct td { padding:9px 8px; border-bottom:1px solid rgba(139,92,246,0.1); text-align:left; }
-.ct th { color:#a78bfa; font-weight:600; }
-.badge { padding:3px 8px; border-radius:4px; font-size:0.84em; font-weight:bold; }
-.ok { background:rgba(34,197,94,0.15); color:#22c55e; }
-.no { background:rgba(239,68,68,0.15); color:#ef4444; }
-.bd { background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:0.78em; }
-
-/* ENGINE badge */
-.engine-badge {
-  display:inline-block; background:rgba(16,185,129,0.15); color:#10b981;
-  border:1px solid rgba(16,185,129,0.3); border-radius:20px;
-  font-size:0.72em; padding:3px 10px; font-weight:600; margin-left:8px;
+.device-card {
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px 16px;
+  text-align: center;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.02);
+  position: relative;
 }
+.device-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--brass-dim);
+}
+.device-card.on {
+  border-color: var(--brass);
+  box-shadow: 0 8px 22px rgba(200,155,92,0.18), inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.device-card .led-dot {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #34363e;
+  box-shadow: inset 0 1px 1px rgba(0,0,0,0.6);
+  transition: all 0.3s;
+}
+.device-card.on .led-dot {
+  background: var(--signal-green);
+  box-shadow: 0 0 7px var(--signal-green);
+}
+.device-card .icon { font-size:2em; margin-bottom:10px; filter: grayscale(0.4) opacity(0.8); transition: filter 0.3s; }
+.device-card.on .icon { filter: none; }
+.device-card .name { font-size:0.88em; font-weight:600; margin-bottom:7px; letter-spacing: 0.3px; color: var(--ink); }
+.device-card .state {
+  font-family: 'JetBrains Mono', monospace;
+  font-size:0.7em; color:var(--ink-dim);
+  background: var(--panel-inset);
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+  border: 1px solid var(--line);
+}
+.device-card.on .state { color: var(--signal-green); background: rgba(95,191,141,0.08); border-color: rgba(95,191,141,0.25); }
+
+.commands-hint {
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin: 16px 16px 0;
+  padding: 18px;
+}
+.commands-hint h3 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size:0.68em; color:var(--brass); margin-bottom:12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 2px;
+}
+.cmd { font-size:0.8em; color:var(--ink-dim); padding:4px 0; line-height: 1.6; font-family:'Inter',sans-serif; }
+.cmd span { color:var(--ink); font-style:normal; font-weight: 500; font-family:'JetBrains Mono',monospace; }
+
+/* Tabbed Layout — physical toggle switch */
+.tab-container {
+  display: flex;
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin: 18px 16px 6px;
+  padding: 4px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.45);
+}
+.tab-button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--ink-dim);
+  font-family: 'Inter', sans-serif;
+  padding: 12px;
+  font-size: 0.86em;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s;
+  letter-spacing: 0.3px;
+}
+.tab-button.active {
+  background: linear-gradient(180deg, var(--brass-bright), var(--brass));
+  color: #1a1308;
+  box-shadow: 0 3px 10px rgba(200,155,92,0.3);
+}
+.web-tab-content {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Form & Table — RFID ledger */
+.panel-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78em;
+  color: var(--brass);
+  margin-bottom: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.flex-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.flex-row input {
+  flex: 1;
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 9px 12px;
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.88em;
+  outline: none;
+  transition: all 0.25s;
+}
+.flex-row input:focus {
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px rgba(200,155,92,0.14);
+}
+.flex-row button {
+  background: linear-gradient(180deg, var(--brass-bright), var(--brass));
+  border: none;
+  border-radius: 9px;
+  color: #1a1308;
+  padding: 9px 18px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.88em;
+  font-weight: 700;
+  cursor: pointer;
+}
+.card-table-container {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+.card-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8em;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+}
+.card-table th, .card-table td {
+  padding: 11px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.card-table th {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--brass);
+  font-weight: 600;
+  font-size: 0.85em;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.card-table tr:hover {
+  background: rgba(255,255,255,0.02);
+}
+.card-table code {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  padding: 2px 7px;
+  border-radius: 5px;
+  color: var(--brass-bright);
+  font-size: 0.95em;
+}
+.btn-danger {
+  background: var(--signal-red);
+  border: none;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8em;
+  font-weight: 600;
+}
+.btn-danger:hover {
+  background: #b35840;
+}
+.badge {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.82em;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+.badge.allowed {
+  background: rgba(95,191,141,0.12);
+  color: var(--signal-green);
+}
+.badge.denied {
+  background: rgba(201,105,79,0.12);
+  color: var(--signal-red);
+}
+
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>🏠 SMART HOME AI</h1>
+  <div class="eyebrow">Trợ lý giọng nói · Nhà thông minh</div>
+  <h1>JARVIS<span class="accent">.</span></h1>
   <div class="status-bar">
     <div class="dot" id="mqttDot"></div>
     <span id="mqttStatus">Chưa kết nối</span>
   </div>
 </div>
 
-<!-- TABS -->
-<div class="tab-bar">
-  <button class="tb active" id="bt1" onclick="switchTab('t1')">🎛️ Điều khiển</button>
-  <button class="tb" id="bt2" onclick="switchTab('t2')">🪪 Thẻ RFID</button>
+<!-- Tab Switcher -->
+<div class="tab-container">
+  <button class="tab-button active" id="btn-tab-control" onclick="switchWebTab('control')">🎛️ Điều khiển</button>
+  <button class="tab-button" id="btn-tab-rfid" onclick="switchWebTab('rfid')">🪪 Quản lý Thẻ</button>
 </div>
 
-<!-- TAB 1 -->
-<div id="tab-t1">
-  <div class="panel">
-    <h3>⚙️ Cấu hình</h3>
-    <div class="ig"><label>Groq API Key <span class="engine-badge">Whisper + LLaMA</span></label><input type="password" id="apiKey" placeholder="gsk_..." /></div>
-    <div class="ig"><label>Mật khẩu HiveMQ</label><input type="password" id="mqttPass" placeholder="Mật khẩu HiveMQ" /></div>
-    <div class="ig"><label>Giọng Tiếng Việt (TTS)</label><select id="viVoice" onchange="saveVoice()"></select></div>
-    <div class="ig"><label>Giọng Tiếng Anh (TTS)</label><select id="enVoice" onchange="saveVoice()"></select></div>
-    <button class="btn-p" onclick="connect()">🔌 Kết nối</button>
+<!-- Tab 1: Điều khiển & AI -->
+<div id="tab-control" class="web-tab-content">
+  <div class="setup-panel">
+    <h3>Cấu hình</h3>
+    <div class="input-group">
+      <label>Groq API Key</label>
+      <input type="password" id="apiKey" placeholder="gsk_..." />
+    </div>
+    <div class="input-group">
+      <label>Mật khẩu HiveMQ</label>
+      <input type="password" id="mqttPass" placeholder="Mật khẩu HiveMQ của bạn" />
+    </div>
+    <div class="input-group">
+      <label>Giọng Tiếng Việt (Vietnamese Voice)</label>
+      <select id="viVoiceSelect" onchange="saveSelectedVoices()"></select>
+    </div>
+    <div class="input-group">
+      <label>Giọng Tiếng Anh (English Voice)</label>
+      <select id="enVoiceSelect" onchange="saveSelectedVoices()"></select>
+    </div>
+    <button class="btn-connect" onclick="connect()">🔌 Kết nối</button>
   </div>
 
   <div class="voice-section">
-    <p class="voice-hint">Nhấn mic → nói tự nhiên → Jarvis trả lời</p>
-    <button class="mic-btn" id="micBtn" onclick="toggleConv()" disabled>🎤</button>
-    <div class="vad-meter" id="vadMeter"><div class="vad-bar" id="vadBar"></div></div>
+    <p class="voice-hint">Nhấn mic và nói lệnh điều khiển</p>
+    <button class="mic-btn" id="micBtn" onclick="startVoice()" disabled>🎤</button>
     <div class="voice-status" id="voiceStatus">Chưa kết nối MQTT</div>
   </div>
 
-  <div class="interim-box" id="interimBox">Lời nói sẽ hiển thị ở đây...</div>
-
   <div class="chat-log" id="chatLog">
-    <div class="cm"><span class="t">--:--</span><span class="a">Nhật ký hội thoại hiển thị ở đây...</span></div>
+    <div class="chat-msg"><span class="time">--:--</span><span class="ai">Nhật ký lệnh sẽ hiển thị ở đây...</span></div>
   </div>
 
-  <div class="dg">
-    <div class="dc" id="card-light1" onclick="manualToggle('light1')"><div class="ic">💡</div><div class="nm">Đèn 1</div><div class="st" id="state-light1">Tắt</div></div>
-    <div class="dc" id="card-light2" onclick="manualToggle('light2')"><div class="ic">💡</div><div class="nm">Đèn 2</div><div class="st" id="state-light2">Tắt</div></div>
-    <div class="dc" id="card-fan"    onclick="manualToggle('fan')"   ><div class="ic">🌀</div><div class="nm">Quạt</div><div class="st" id="state-fan">Tắt</div></div>
-    <div class="dc" id="card-door"   onclick="manualToggle('door')"  ><div class="ic">🚪</div><div class="nm">Cửa</div><div class="st" id="state-door">Đóng</div></div>
-    <div class="dc" style="cursor:default;"><div class="ic">🌡️</div><div class="nm">Cảm biến</div><div class="st" id="state-temp">-- °C / -- %</div></div>
-    <div class="dc" style="cursor:default;" id="card-gas"><div class="ic">⚠️</div><div class="nm">Khí Gas</div><div class="st" id="state-gas">-- %</div></div>
+  <div class="device-grid">
+    <div class="device-card" id="card-light1" onclick="manualToggle('light1')">
+      <span class="led-dot"></span>
+      <div class="icon">💡</div>
+      <div class="name">Đèn 1</div>
+      <div class="state" id="state-light1">Tắt</div>
+    </div>
+    <div class="device-card" id="card-light2" onclick="manualToggle('light2')">
+      <span class="led-dot"></span>
+      <div class="icon">💡</div>
+      <div class="name">Đèn 2</div>
+      <div class="state" id="state-light2">Tắt</div>
+    </div>
+    <div class="device-card" id="card-fan" onclick="manualToggle('fan')">
+      <span class="led-dot"></span>
+      <div class="icon">🌀</div>
+      <div class="name">Quạt</div>
+      <div class="state" id="state-fan">Tắt</div>
+    </div>
+    <div class="device-card" id="card-door" onclick="manualToggle('door')">
+      <span class="led-dot"></span>
+      <div class="icon">🚪</div>
+      <div class="name">Cửa</div>
+      <div class="state" id="state-door">Đóng</div>
+    </div>
+    <div class="device-card" style="cursor:default;">
+      <div class="icon">🌡️</div>
+      <div class="name">Cảm biến</div>
+      <div class="state" id="state-temp">-- °C / -- %</div>
+    </div>
+    <div class="device-card" style="cursor:default;" id="card-gas">
+      <div class="icon">⚠️</div>
+      <div class="name">Khí Gas</div>
+      <div class="state" id="state-gas">-- %</div>
+    </div>
   </div>
 
-  <div class="panel" style="margin-top:14px;">
-    <h3>📝 Lời nhắc LCD</h3>
-    <div class="fr" style="margin-bottom:0;">
-      <input type="text" id="reminderInput" placeholder="Nhập lời nhắc (không dấu)..." />
+  <!-- Gửi lời nhắc lên LCD -->
+  <div class="setup-panel" style="margin-top: 16px;">
+    <div class="panel-title">📝 Gửi lời nhắc lên LCD 2004</div>
+    <div class="flex-row" style="margin-bottom:0;">
+      <input type="text" id="reminderInput" placeholder="Nhập lời nhắc không dấu (Ví dụ: mua sua, tat quat...)" />
       <button onclick="sendReminder()">Gửi</button>
     </div>
   </div>
 
-  <div class="hint-box">
-    <h3>📋 Ví dụ lệnh</h3>
-    <div class="hc">• <span>"trời nóng quá"</span> / <span>"oi bức"</span> → bật quạt</div>
-    <div class="hc">• <span>"đi ngủ đây"</span> / <span>"về nhà rồi"</span></div>
-    <div class="hc">• <span>"nhiệt độ phòng bao nhiêu"</span></div>
-    <div class="hc">• <span>"bạn tên gì"</span> / <span>"kể chuyện đi"</span> → trò chuyện</div>
-    <div class="hc">• <span>"turn on all the lights"</span></div>
+  <div class="commands-hint">
+    <h3>📋 Lệnh mẫu</h3>
+    <div class="cmd">• <span>"trời nóng quá"</span> / <span>"oi bức thế"</span></div>
+    <div class="cmd">• <span>"bật đèn lên"</span> / <span>"tắt hết đi"</span></div>
+    <div class="cmd">• <span>"đi ngủ đây"</span> / <span>"về nhà rồi"</span></div>
+    <div class="cmd">• <span>"tối quá"</span> / <span>"chói mắt quá"</span></div>
+    <div class="cmd">• <span>"turn on the fan"</span> / <span>"lights off"</span></div>
+    <div class="cmd">• <span>"chuyển sang màn hình cảm biến"</span> / <span>"về màn hình chính"</span></div>
   </div>
 </div>
 
-<!-- TAB 2 -->
-<div id="tab-t2" style="display:none;">
-  <div class="panel">
-    <h3>🪪 Đăng ký thẻ mới</h3>
-    <div class="fr">
-      <input type="text" id="newUid" placeholder="Mã UID (VD: 1A2B3C4D)" />
-      <input type="text" id="newName" placeholder="Tên (không dấu)" />
-      <button onclick="addCard()">Thêm</button>
+<!-- Tab 2: Quản lý Thẻ RFID & Lịch sử -->
+<div id="tab-rfid" class="web-tab-content" style="display:none;">
+  <div class="setup-panel">
+    <div class="panel-title">🪪 Đăng ký thẻ mới</div>
+    <div class="flex-row">
+      <input type="text" id="newCardUid" placeholder="Mã thẻ UID (Ví dụ: 1A2B3C4D)" />
+      <input type="text" id="newCardName" placeholder="Tên chủ thẻ (Ví dụ: Bo, Me, Quang)" />
+      <button onclick="addNewCard()">Thêm</button>
     </div>
-    <p style="font-size:0.7em;color:#666;">* Quẹt thẻ lạ để tự điền UID</p>
+    <p style="font-size:0.7em; color:var(--ink-dim); font-family:'Inter',sans-serif;">* Quẹt thẻ lạ bất kỳ để tự động điền nhanh mã thẻ UID</p>
   </div>
-  <div class="panel">
-    <h3>📋 Danh sách thẻ</h3>
-    <div style="overflow-x:auto;"><table class="ct"><thead><tr><th>UID</th><th>Tên</th><th>Quyền</th><th></th></tr></thead><tbody id="wlBody"></tbody></table></div>
+  
+  <div class="setup-panel">
+    <div class="panel-title">📋 Danh sách thẻ đã đăng ký</div>
+    <div class="card-table-container">
+      <table class="card-table">
+        <thead>
+          <tr>
+            <th>Mã thẻ UID</th>
+            <th>Tên chủ thẻ</th>
+            <th>Quyền ra vào</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="rfidWhitelistBody">
+          <!-- Sẽ được điền động bằng JS -->
+        </tbody>
+      </table>
+    </div>
   </div>
-  <div class="panel">
-    <h3>📜 Lịch sử ra vào</h3>
-    <div style="overflow-x:auto;"><table class="ct"><thead><tr><th>Thời gian</th><th>UID</th><th>Tên</th><th>KQ</th></tr></thead><tbody id="logBody"></tbody></table></div>
+
+  <div class="setup-panel">
+    <div class="panel-title">📜 Lịch sử ra vào cửa</div>
+    <div class="card-table-container">
+      <table class="card-table">
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Mã thẻ UID</th>
+            <th>Tên thẻ</th>
+            <th>Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody id="rfidLogsBody">
+          <!-- Sẽ được điền động bằng JS -->
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
 <script>
-// ===== CONFIG =====
-const MQTT_HOST = 'b5ce82cad41c4f209a7ecb3409f688c9.s1.eu.hivemq.cloud';
-const MQTT_PORT = 8884;
-const MQTT_USER = 'hung210a7';
-const TOPIC_CMD  = 'smarthome/nhacuatoi/cmd';
-const TOPIC_STAT = 'smarthome/nhacuatoi/status';
+// ===== CẤU HÌNH CỐ ĐỊNH =====
+const MQTT_HOST     = 'b5ce82cad41c4f209a7ecb3409f688c9.s1.eu.hivemq.cloud';
+const MQTT_PORT     = 8884;
+const MQTT_USER     = 'hung210a7';
+const MQTT_TOPIC    = 'smarthome/nhacuatoi/cmd';
+const MQTT_STATUS   = 'smarthome/nhacuatoi/status';
+// =============================
 
-// ===== STATE =====
-let mqttClient   = null;
-let convActive   = false;
-let micState     = 'IDLE';
-let silTimer     = null;
-let audioCtx     = null;
-let currentTemp  = null, currentHumi = null;
-const devStates  = { light1:false, light2:false, fan:false, door:false };
-let rfidList = JSON.parse(localStorage.getItem('sh_wl')||'[]');
-let rfidLogs = JSON.parse(localStorage.getItem('sh_rl')||'[]');
+let mqttClient = null;
+let isListening = false;
+let isProcessing = false;
+const deviceStates = { light1:false, light2:false, fan:false, door:false };
+let currentTemp = null;
+let currentHumi = null;
 
-// ===== WHISPER VAD STATE =====
-let mediaStream   = null;
-let mediaRecorder = null;
-let audioChunks   = [];
-let vadAnalyser   = null;
-let vadSource     = null;
-let vadAnimFrame  = null;
-let isSpeaking    = false;
-let silenceFrames = 0;
-let speechFrames  = 0;
-const SILENCE_THRESHOLD = 8;    // RMS mức im lặng
-const SPEECH_THRESHOLD  = 12;   // RMS mức có tiếng nói
-const SILENCE_FRAMES_END = 35;  // ~1.2s im lặng sau nói → gửi Whisper
-const MIN_SPEECH_FRAMES  = 8;   // tối thiểu 0.3s tiếng nói mới gửi
-
-// ===== MQTT =====
 function connect() {
-  const key  = document.getElementById('apiKey').value.trim();
-  const pass = document.getElementById('mqttPass').value.trim();
-  if (!key)  { alert('Nhập Groq API Key!'); return; }
-  if (!pass) { alert('Nhập mật khẩu HiveMQ!'); return; }
-  localStorage.setItem('sh_groqkey', key);
-  localStorage.setItem('sh_mqttpass', pass);
+  const apiKey  = document.getElementById('apiKey').value.trim();
+  const mqttPass = document.getElementById('mqttPass').value.trim();
+  if (!apiKey)   { alert('Nhập Groq API Key!'); return; }
+  if (!mqttPass) { alert('Nhập mật khẩu HiveMQ!'); return; }
+
+  localStorage.setItem('sh_groqkey', apiKey);
+  localStorage.setItem('sh_mqttpass', mqttPass);
   setStatus('Đang kết nối...', 'yellow');
+
   if (mqttClient) { mqttClient.end(true); mqttClient = null; }
-  const cid = 'sh_' + Math.random().toString(16).slice(2,8);
-  mqttClient = mqtt.connect('wss://'+MQTT_HOST+':'+MQTT_PORT+'/mqtt', {
-    clientId:cid, username:MQTT_USER, password:pass, clean:true, reconnectPeriod:5000
+
+  const clientId = 'webapp_' + Math.random().toString(16).slice(2,8);
+  mqttClient = mqtt.connect('wss://' + MQTT_HOST + ':' + MQTT_PORT + '/mqtt', {
+    clientId,
+    username: MQTT_USER,
+    password: mqttPass,
+    clean: true,
+    reconnectPeriod: 5000,
   });
+
   mqttClient.on('connect', () => {
     setStatus('Đã kết nối ✓', 'green');
     document.getElementById('micBtn').disabled = false;
-    setVoiceStatus('Nhấn mic để bắt đầu nói chuyện');
-    mqttClient.subscribe(TOPIC_STAT);
-    addLog('a', '✅ Kết nối HiveMQ Cloud thành công! Engine: Groq Whisper + LLaMA');
-    syncWhitelist();
+    document.getElementById('voiceStatus').textContent = 'Nhấn mic để ra lệnh';
+    mqttClient.subscribe(MQTT_STATUS);
+    addLog('ai', '✅ Kết nối HiveMQ Cloud thành công!');
+    // Tự động đồng bộ danh sách thẻ khi kết nối
+    syncWhitelistToEsp32();
   });
-  mqttClient.on('message', (_, msg) => {
+
+  mqttClient.on('message', (topic, message) => {
     try {
-      const d = JSON.parse(msg.toString());
-      ['light1','light2','fan','door'].forEach(k => { if (d[k]!==undefined) updateCard(k, d[k]); });
-      if (d.temp!==undefined) { currentTemp=parseFloat(d.temp).toFixed(1); currentHumi=parseFloat(d.humi).toFixed(1); document.getElementById('state-temp').textContent=currentTemp+'°C / '+currentHumi+'%'; }
-      if (d.gas!==undefined) { document.getElementById('state-gas').textContent=d.gas+(d.gas>40?'% ⚠️':'%'); document.getElementById('card-gas').classList.toggle('on',d.gas>40); }
-      if (d.type==='rfid') handleRfid(d);
+      const d = JSON.parse(message.toString());
+      if (d.light1 !== undefined) updateCard('light1', d.light1);
+      if (d.light2 !== undefined) updateCard('light2', d.light2);
+      if (d.fan   !== undefined) updateCard('fan',    d.fan);
+      if (d.door  !== undefined) updateCard('door',   d.door);
+      if (d.temp !== undefined) {
+        currentTemp = parseFloat(d.temp).toFixed(1);
+        currentHumi = parseFloat(d.humi).toFixed(1);
+        document.getElementById('state-temp').textContent = currentTemp + '°C / ' + currentHumi + '%';
+      }
+      if (d.gas !== undefined) {
+        document.getElementById('state-gas').textContent = d.gas + '%';
+        const gasCard = document.getElementById('card-gas');
+        if (d.gas > 40) {
+          gasCard.classList.add('on');
+          document.getElementById('state-gas').style.color = '#ef4444';
+          document.getElementById('state-gas').textContent = d.gas + '% - Cảnh báo!';
+        } else {
+          gasCard.classList.remove('on');
+          document.getElementById('state-gas').style.color = '';
+        }
+      }
+      
+      // Xử lý thông điệp quẹt thẻ RFID gửi từ ESP32
+      if (d.type === 'rfid') {
+        const matched = rfidWhitelist.find(c => c.uid === d.uid);
+        const cardName = matched ? matched.name : '';
+        
+        // Ghi lại lịch sử
+        const nowStr = new Date().toLocaleTimeString('vi', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) + ' ' + new Date().toLocaleDateString('vi');
+        rfidLogs.push({
+          time: nowStr,
+          uid: d.uid,
+          name: cardName,
+          allowed: d.allowed
+        });
+        if (rfidLogs.length > 100) rfidLogs.shift();
+        saveLogs();
+        
+        // Điền nhanh UID nếu thẻ chưa đăng ký
+        if (!matched) {
+          document.getElementById('newCardUid').value = d.uid;
+        }
+        
+        // Log vào chat log
+        if (d.allowed) {
+          addLog('action', `🚪 Thẻ hợp lệ: [${cardName}] (${d.uid}) đã mở cửa.`);
+          // Gửi phản hồi tên thẻ cho ESP32 hiển thị
+          mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'rfid_name', action: cardName }), { qos: 1 });
+        } else {
+          addLog('error', `⚠️ Thẻ không hợp lệ: (${d.uid}) muốn truy cập.`);
+        }
+      }
     } catch(e) {}
   });
-  mqttClient.on('error', err => { setStatus('Lỗi: '+err.message,''); addLog('e','❌ '+err.message); });
-  mqttClient.on('offline', () => { setStatus('Mất kết nối...','yellow'); document.getElementById('micBtn').disabled=true; });
+
+  mqttClient.on('error', (err) => {
+    setStatus('Lỗi: ' + err.message, '');
+    addLog('error', '❌ ' + err.message);
+  });
+
+  mqttClient.on('offline', () => {
+    setStatus('Mất kết nối - đang kết nối lại...', 'yellow');
+    document.getElementById('micBtn').disabled = true;
+  });
 }
 
-// ===== AUDIO BEEPS =====
-function beep(type) {
+// ===== HỆ THỐNG GIAO TIẾP GIỌNG NÓI — WHISPER + VAD =====
+// Thay thế Web Speech API bằng Groq Whisper (whisper-large-v3-turbo):
+//   ✅ Tiếng Việt + Tiếng Anh chính xác như nhau
+//   ✅ Hỗ trợ câu lệnh phức tạp, giọng accent, nói nhanh
+//   ✅ Không bị ngọng, không sót ký tự đặc biệt
+//   ✅ Cùng API key Groq đang dùng, miễn phí trong free tier
+// VAD (Voice Activity Detection) dùng AudioContext AnalyserNode để phát hiện
+// người dùng nói/ngừng nói theo thời gian thực, không cần bấm nút.
+let isConversationActive = false;
+let liveState = 'IDLE';
+let silenceTimer = null;
+let audioCtx = null;
+
+// --- VAD + MediaRecorder state ---
+let vadStream    = null;   // MediaStream từ microphone
+let vadSource    = null;   // MediaStreamAudioSourceNode
+let vadAnalyser  = null;   // AnalyserNode để đọc năng lượng âm thanh
+let vadInterval  = null;   // setInterval polling VAD mỗi 80ms
+let mediaRec     = null;   // MediaRecorder đang ghi âm
+let audioChunks  = [];     // Các chunk dữ liệu audio
+let vadSpeaking  = false;  // Hiện tại người dùng đang nói hay không
+let vadSilCount  = 0;      // Đếm số tick im lặng liên tiếp
+
+// Ngưỡng VAD: RMS > VAD_THRESH = đang nói; im lặng >= VAD_SILENCE_TICKS * 80ms = ngừng nói
+const VAD_THRESH        = 0.018;  // Điều chỉnh tùy microphone (~1.8% full scale)
+const VAD_SILENCE_TICKS = 22;     // ~1.75s im lặng → ngừng câu (~22 * 80ms)
+
+// Hàm tạo âm thanh bíp thông minh trực tiếp từ trình duyệt
+function playSound(type) {
   try {
-    if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-    if (audioCtx.state==='suspended') audioCtx.resume();
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.connect(g); g.connect(audioCtx.destination);
-    const t = audioCtx.currentTime;
-    const cfg = {
-      start:  [660, 0.12, 0.2, 'sine'],
-      think:  [880, 0.10, 0.12,'sine'],
-      barge:  [440, 0.05, 0.08,'triangle'],
-      end:    [520, 0.10, 0.18,'sine']
-    }[type] || [440,0.1,0.1,'sine'];
-    o.type=cfg[3]; o.frequency.value=cfg[0];
-    g.gain.setValueAtTime(cfg[1],t);
-    g.gain.exponentialRampToValueAtTime(0.001,t+cfg[2]);
-    o.start(t); o.stop(t+cfg[2]);
-    if (type==='end') setTimeout(()=>{ const o2=audioCtx.createOscillator(),g2=audioCtx.createGain(); o2.connect(g2); g2.connect(audioCtx.destination); const t2=audioCtx.currentTime; o2.type='sine'; o2.frequency.value=380; g2.gain.setValueAtTime(0.10,t2); g2.gain.exponentialRampToValueAtTime(0.001,t2+0.22); o2.start(t2); o2.stop(t2+0.22); },170);
-  } catch(e) {}
-}
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
 
-// ===== CONVERSATION =====
-async function toggleConv() {
-  if (!audioCtx) { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
-  if (audioCtx.state==='suspended') await audioCtx.resume();
-  if (convActive) stopConv();
-  else await startConv();
-}
+    if (type === 'start') {
+      // 1 âm thanh khởi động nhẹ nhàng
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+    } else if (type === 'think') {
+      // Báo hiệu đã dừng nói và chuẩn bị phản hồi
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'interrupt') {
+      // Âm thanh báo hiệu người dùng ngắt lời AI
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.06);
+    } else if (type === 'end') {
+      // 2 tiếng bíp trầm kết thúc cuộc gọi
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
 
-async function startConv() {
-  try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:true, noiseSuppression:true, sampleRate:16000 } });
-  } catch(e) {
-    addLog('e','❌ Không thể truy cập mic: '+e.message); return;
+      setTimeout(() => {
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(390, audioCtx.currentTime);
+        gain2.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+        osc2.start();
+        osc2.stop(audioCtx.currentTime + 0.2);
+      }, 150);
+    }
+  } catch (e) {
+    console.error('Không thể phát âm thanh bíp:', e);
   }
-  convActive = true;
-  beep('start');
-  setupVAD();
-  setState('LISTENING');
-  if (window.speechSynthesis) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance('')); }
 }
 
-function stopConv() {
-  convActive = false;
-  clearSilTimer();
-  stopRecording();
-  stopVAD();
-  if (mediaStream) { mediaStream.getTracks().forEach(t=>t.stop()); mediaStream=null; }
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
-  beep('end');
-  setState('IDLE');
-  document.getElementById('vadMeter').style.display = 'none';
-  document.getElementById('interimBox').textContent = 'Lời nói sẽ hiển thị ở đây...';
+// ── Gửi audio blob lên Groq Whisper để nhận dạng giọng nói ──
+// Model whisper-large-v3-turbo: 99 ngôn ngữ, 216x real-time, free tier rộng rãi.
+// Không truyền 'language' → Whisper tự nhận diện ngôn ngữ (Việt/Anh/v.v.)
+// Truyền 'prompt' để model hiểu ngữ cảnh nhà thông minh và tên thiết bị.
+async function transcribeWithWhisper(blob) {
+  const apiKey = localStorage.getItem('sh_groqkey');
+  if (!apiKey) return '';
+  try {
+    const ext = blob.type.includes('ogg') ? 'ogg' : blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const formData = new FormData();
+    formData.append('file', blob, 'audio.' + ext);
+    formData.append('model', 'whisper-large-v3-turbo');
+    formData.append('response_format', 'json');
+    // Prompt ngắn giúp Whisper nhận ra tên thiết bị đặc biệt & không nhầm tiếng
+    formData.append('prompt', 'Smart home voice command: đèn, quạt, cửa, bật, tắt, light, fan, door.');
+
+    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + apiKey },
+      body: formData
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      addLog('error', '❌ Whisper lỗi: ' + (err.error?.message || res.status));
+      return '';
+    }
+    const data = await res.json();
+    return (data.text || '').trim();
+  } catch (e) {
+    addLog('error', '❌ Whisper: ' + e.message);
+    return '';
+  }
 }
 
-// ===== VAD (Voice Activity Detection) =====
-function setupVAD() {
-  if (!audioCtx || !mediaStream) return;
-  vadSource = audioCtx.createMediaStreamSource(mediaStream);
+// ── VAD: khởi động vòng polling AnalyserNode 80ms/tick ──
+function startVAD() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  vadSource   = audioCtx.createMediaStreamSource(vadStream);
   vadAnalyser = audioCtx.createAnalyser();
   vadAnalyser.fftSize = 512;
   vadSource.connect(vadAnalyser);
 
   const buf = new Uint8Array(vadAnalyser.frequencyBinCount);
-  const vadMeter = document.getElementById('vadMeter');
-  const vadBar   = document.getElementById('vadBar');
-  vadMeter.style.display = 'block';
-  isSpeaking = false; silenceFrames = 0; speechFrames = 0;
-  audioChunks = [];
 
-  function loop() {
-    if (!convActive) return;
+  vadInterval = setInterval(() => {
+    if (!isConversationActive) return;
+
     vadAnalyser.getByteTimeDomainData(buf);
-    const rms = Math.sqrt(buf.reduce((s,v)=>s+(v-128)**2,0)/buf.length);
-    const pct = Math.min(100, rms * 3.5);
-    vadBar.style.width = pct + '%';
-    vadBar.style.background = rms > SPEECH_THRESHOLD
-      ? 'linear-gradient(90deg,#ec4899,#8b5cf6)'
-      : 'linear-gradient(90deg,#10b981,#06b6d4)';
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) {
+      const v = (buf[i] - 128) / 128;
+      sum += v * v;
+    }
+    const rms = Math.sqrt(sum / buf.length);
 
-    if (micState === 'PROC' || micState === 'SPEAK') { vadAnimFrame = requestAnimationFrame(loop); return; }
+    if (rms > VAD_THRESH) {
+      // ──── Người dùng đang nói ────
+      vadSilCount = 0;
 
-    if (rms > SPEECH_THRESHOLD) {
-      speechFrames++; silenceFrames = 0;
-      if (!isSpeaking && speechFrames >= 3) {
-        isSpeaking = true;
-        clearSilTimer();
-        // Barge-in: ngắt lời AI
+      if (!vadSpeaking) {
+        vadSpeaking = true;
+
+        // Barge-in: ngắt AI nếu đang nói
         if (window.speechSynthesis && window.speechSynthesis.speaking) {
-          window.speechSynthesis.cancel(); beep('barge');
+          window.speechSynthesis.cancel();
+          playSound('interrupt');
         }
-        startRecording();
-        setState('USER');
-      }
-    } else if (rms < SILENCE_THRESHOLD) {
-      silenceFrames++;
-      if (isSpeaking && silenceFrames >= SILENCE_FRAMES_END) {
-        isSpeaking = false; speechFrames = 0; silenceFrames = 0;
-        if (audioChunks.length > 0) {
-          setState('PROC'); beep('think');
-          stopRecording();
-          setTimeout(() => sendToWhisper(), 50);
-        } else {
-          setState('LISTENING');
-        }
+        // Hủy đếm ngược im lặng nếu đang chạy
+        if (silenceTimer) { clearInterval(silenceTimer); silenceTimer = null; }
+
+        setLiveState('USER_SPEAKING');
+        startMediaRecording();
       }
     } else {
-      if (isSpeaking) silenceFrames = 0;
+      // ──── Im lặng ────
+      if (vadSpeaking) {
+        vadSilCount++;
+        if (vadSilCount >= VAD_SILENCE_TICKS) {
+          // Đủ thời gian im lặng → coi như câu đã kết thúc
+          vadSpeaking = false;
+          vadSilCount = 0;
+          stopMediaRecordingAndTranscribe();
+        }
+      }
     }
-    vadAnimFrame = requestAnimationFrame(loop);
-  }
-  vadAnimFrame = requestAnimationFrame(loop);
+  }, 80);
 }
 
 function stopVAD() {
-  if (vadAnimFrame) { cancelAnimationFrame(vadAnimFrame); vadAnimFrame = null; }
-  if (vadSource) { try { vadSource.disconnect(); } catch(e) {} vadSource = null; }
+  if (vadInterval) { clearInterval(vadInterval); vadInterval = null; }
+  if (vadSource)   { try { vadSource.disconnect(); } catch(e){} vadSource = null; }
   vadAnalyser = null;
+  vadSpeaking = false;
+  vadSilCount = 0;
 }
 
-// ===== MEDIARECORDER =====
-function startRecording() {
-  if (!mediaStream) return;
+// ── MediaRecorder: thu âm đoạn câu người dùng vừa nói ──
+function startMediaRecording() {
+  if (mediaRec && mediaRec.state === 'recording') return;
   audioChunks = [];
-  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
-                 : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
-                 : 'audio/mp4';
   try {
-    mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-    mediaRecorder.start(200);
-  } catch(e) { addLog('e','❌ MediaRecorder lỗi: '+e.message); }
-}
-
-function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop();
+    // Ưu tiên codec webm/opus (Chrome/Android) rồi fallback
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+        ? 'audio/ogg;codecs=opus'
+        : '';
+    mediaRec = mime ? new MediaRecorder(vadStream, { mimeType: mime }) : new MediaRecorder(vadStream);
+    mediaRec.ondataavailable = e => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
+    mediaRec.start(200); // chunk mỗi 200ms để có data sớm
+  } catch(e) {
+    addLog('error', '❌ MediaRecorder: ' + e.message);
   }
 }
 
-// ===== GROQ WHISPER STT =====
-async function sendToWhisper() {
-  if (audioChunks.length === 0) { if (convActive) startSilTimer(); return; }
-  const mimeType = (mediaRecorder && mediaRecorder.mimeType) || 'audio/webm';
-  const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
-  const blob = new Blob(audioChunks, { type: mimeType });
-  audioChunks = [];
+function stopMediaRecordingAndTranscribe() {
+  if (!mediaRec || mediaRec.state !== 'recording') {
+    if (isConversationActive) startSilenceTimer();
+    return;
+  }
+  mediaRec.onstop = async () => {
+    if (!isConversationActive) return;
+    if (audioChunks.length === 0) { startSilenceTimer(); return; }
 
-  // Kiểm tra độ dài tối thiểu (< 0.5s không gửi)
-  if (blob.size < 4000) { setState('LISTENING'); return; }
+    setLiveState('PROCESSING');
+    playSound('think');
 
-  document.getElementById('interimBox').textContent = '⏳ Đang nhận diện giọng nói...';
+    const blob = new Blob(audioChunks, { type: mediaRec.mimeType || 'audio/webm' });
+    audioChunks = [];
 
+    // Kiểm tra blob đủ dữ liệu (>0.5KB) trước khi gửi lên Whisper
+    if (blob.size < 512) { startSilenceTimer(); return; }
+
+    const text = await transcribeWithWhisper(blob);
+    if (!text) {
+      // Không nhận ra gì — quay lại chờ
+      if (isConversationActive) { setLiveState('LISTENING'); startSilenceTimer(); }
+      return;
+    }
+    // Cập nhật UI hiển thị những gì vừa nghe được
+    document.getElementById('voiceStatus').innerHTML = `🎙️ <span style="color: #c084fc;">"${text}"</span>`;
+    processLiveSpeech(text);
+  };
+  mediaRec.stop();
+}
+
+// Bắt đầu cuộc hội thoại: xin quyền mic, khởi động VAD
+async function startLiveConversation() {
   const apiKey = localStorage.getItem('sh_groqkey');
-  const form = new FormData();
-  form.append('file', blob, 'audio.' + ext);
-  form.append('model', 'whisper-large-v3-turbo');
-  form.append('language', 'vi');
-  form.append('response_format', 'text');
+  if (!apiKey) { addLog('error', '❌ Cần nhập Groq API Key trước!'); return; }
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + apiKey },
-      body: form
-    });
-    const text = (await res.text()).trim();
-    if (!text || text.length < 2) { setState('LISTENING'); document.getElementById('interimBox').textContent = '...'; return; }
-    document.getElementById('interimBox').textContent = '"' + text + '"';
-    addLog('u', '🎙️ "' + text + '"');
-    await processLLM(text);
-  } catch(err) {
-    addLog('e', '❌ Whisper lỗi: ' + err.message);
-    setState('LISTENING');
-    if (convActive) startSilTimer();
+    // Xin quyền microphone (chỉ hỏi lần đầu)
+    vadStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch(e) {
+    addLog('error', '❌ Không truy cập được microphone: ' + e.message);
+    return;
+  }
+
+  isConversationActive = true;
+  playSound('start');
+  setLiveState('LISTENING');
+
+  // Khởi động VAD — từ đây tất cả đều tự động
+  startVAD();
+
+  // Kích hoạt audio context sớm để iOS Safari cho phép TTS
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance('');
+    window.speechSynthesis.speak(u);
+  }
+  addLog('ai', '🎙️ Whisper đang nghe — nói đi Jarvis lắng nghe đây!');
+}
+
+// Kết thúc cuộc hội thoại: dọn dẹp tài nguyên audio
+function stopLiveConversation() {
+  isConversationActive = false;
+
+  if (silenceTimer) { clearInterval(silenceTimer); silenceTimer = null; }
+
+  stopVAD();
+
+  if (mediaRec && mediaRec.state === 'recording') {
+    try { mediaRec.stop(); } catch(e) {}
+  }
+  mediaRec = null;
+  audioChunks = [];
+
+  if (vadStream) {
+    vadStream.getTracks().forEach(t => t.stop());
+    vadStream = null;
+  }
+
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+  playSound('end');
+  setLiveState('IDLE');
+}
+
+// Nút Mic điều khiển Bật/Tắt cuộc trò chuyện
+async function startVoice() {
+  if (isConversationActive) {
+    stopLiveConversation();
+  } else {
+    await startLiveConversation();
   }
 }
 
-// ===== GROQ LLM =====
-async function processLLM(text) {
+// Cập nhật trạng thái hiển thị của nút Mic & Dòng chữ trạng thái
+function setLiveState(state) {
+  liveState = state;
+  const micBtn = document.getElementById('micBtn');
+  const voiceStatus = document.getElementById('voiceStatus');
+  if (!micBtn || !voiceStatus) return;
+
+  micBtn.className = 'mic-btn';
+  micBtn.innerHTML = '🎤';
+
+  switch (state) {
+    case 'IDLE':
+      voiceStatus.textContent = 'Nhấn mic để bắt đầu cuộc trò chuyện';
+      voiceStatus.style.color = '#a78bfa';
+      break;
+    case 'LISTENING':
+      micBtn.classList.add('state-listening');
+      micBtn.innerHTML = '👂';
+      voiceStatus.textContent = '🎙️ Đang nghe... Hãy nói';
+      voiceStatus.style.color = '#60a5fa';
+      break;
+    case 'USER_SPEAKING':
+      micBtn.classList.add('state-user-speaking');
+      micBtn.innerHTML = '💬';
+      voiceStatus.style.color = '#f472b6';
+      break;
+    case 'PROCESSING':
+      micBtn.classList.add('state-processing');
+      micBtn.innerHTML = '⏳';
+      voiceStatus.textContent = '🤖 Jarvis đang suy nghĩ...';
+      voiceStatus.style.color = '#fbbf24';
+      break;
+    case 'SPEAKING':
+      micBtn.classList.add('state-speaking');
+      micBtn.innerHTML = '🗣️';
+      voiceStatus.style.color = '#34d399';
+      break;
+    case 'WAITING':
+      micBtn.classList.add('state-waiting');
+      micBtn.innerHTML = '⏳';
+      voiceStatus.style.color = '#fbbf24';
+      break;
+  }
+}
+
+// Bộ đếm ngược 5 giây im lặng để tự động ngắt kết nối
+function startSilenceTimer() {
+  if (silenceTimer) clearInterval(silenceTimer);
+  setLiveState('WAITING');
+
+  let countdown = 5;
+  document.getElementById('voiceStatus').innerHTML = `⏳ Đang chờ bạn nói tiếp... (${countdown}s)`;
+
+  silenceTimer = setInterval(() => {
+    countdown--;
+    if (countdown > 0) {
+      document.getElementById('voiceStatus').innerHTML = `⏳ Đang chờ bạn nói tiếp... (${countdown}s)`;
+    } else {
+      clearInterval(silenceTimer);
+      silenceTimer = null;
+      console.log('Hết 5s im lặng, ngắt hội thoại.');
+      stopLiveConversation();
+    }
+  }, 1000);
+}
+
+// Xử lý gửi văn bản giọng nói lên API Groq
+async function processLiveSpeech(text) {
+  addLog('user', '🎙️ "' + text + '"');
   const apiKey = localStorage.getItem('sh_groqkey');
-  const prompt = `Bạn là trợ lý ảo nhà thông minh tên Jarvis. Có 2 nhiệm vụ:
-1. Điều khiển thiết bị thông minh khi được yêu cầu.
-2. Trả lời câu hỏi/trò chuyện thông minh, tự nhiên bằng đúng ngôn ngữ người dùng đang dùng.
+  const prompt = `Bạn là trợ lý ảo nhà thông minh tên Jarvis. Bạn có 2 nhiệm vụ:
+1. Nhận diện và thực thi điều khiển thiết bị thông minh khi được yêu cầu.
+2. Trả lời các câu hỏi trò chuyện, kiến thức thông thường của người dùng một cách đầy đủ, thông minh, chi tiết và thân thiện bằng CHÍNH NGÔN NGỮ mà người dùng đang giao tiếp (hỗ trợ cả Tiếng Việt, Tiếng Anh, Tiếng Nhật, v.v.).
 
-Thiết bị: light1 (đèn 1), light2 (đèn 2), fan (quạt), door (cửa), all (tất cả). Action: "on"/"off".
-lcd_tab: action "1" (màn chính), "2" (cảm biến), "3" (lời nhắc).
+Thiết bị hợp lệ: light1 (đèn 1), light2 (đèn 2), fan (quạt), door (cửa), lcd_tab (màn hình hiển thị LCD, hành động là "1" - màn hình chính/màn chờ, "2" - màn hình cảm biến, "3" - màn hình lời nhắc), all (tất cả).
+Hành động hợp lệ: "on" (bật/mở), "off" (tắt/đóng/khóa) hoặc "1", "2", "3" (dành riêng cho lcd_tab).
 
-Trả về JSON (KHÔNG markdown, KHÔNG giải thích thêm):
-{"commands":[{"device":"...","action":"..."}],"speak":"...","lang":"BCP47"}
+Yêu cầu trả về JSON định dạng sau (không giải thích hay thêm văn bản khác ngoài JSON):
+{
+  "commands": [
+    { "device": "tên_thiết_bị", "action": "hành_động" }
+  ],
+  "speak": "câu_trả_lời_hoặc_câu_nói_phản_hồi",
+  "lang": "mã_ngôn_ngữ_bcp47"
+}
 
 Quy tắc:
-- Lệnh thiết bị: điền commands, speak xác nhận bằng ngôn ngữ người dùng
-- Trò chuyện/câu hỏi: commands:[], speak trả lời ngắn gọn tự nhiên
-- Hỏi nhiệt độ/độ ẩm: commands:[{device:lcd_tab,action:"2"}], speak:"temp_humi"
-- Suy luận ngữ cảnh: "nóng"→bật quạt, "đi ngủ"→tắt tất, "về nhà"→bật đèn, "chói"→tắt đèn
-- Phản hồi speak ngắn (<30 từ), như trợ lý giọng nói thật
+- Khi người dùng ra lệnh điều khiển: Tạo danh sách lệnh trong "commands" và phản hồi xác nhận trong "speak" bằng ngôn ngữ phù hợp.
+- Khi hỏi về nhiệt độ, độ ẩm, thời tiết trong nhà: Đặt "commands" là [{"device": "lcd_tab", "action": "2"}] và "speak" là "temp_humi". Trường "lang" đặt là "vi-VN".
+- Khi người dùng yêu cầu chuyển màn hình, đổi tab LCD: Đặt lệnh tương ứng của "lcd_tab" vào "commands".
+- Khi người dùng trò chuyện, hỏi thông tin: Trả lời họ trực tiếp vào trường "speak" một cách thông minh, chi tiết bằng chính ngôn ngữ họ dùng, đồng thời ghi mã ngôn ngữ BCP-47 tương ứng vào trường "lang" (Ví dụ: "en-US" cho tiếng Anh, "vi-VN" cho tiếng Việt, "ja-JP" cho tiếng Nhật, "zh-CN" cho tiếng Trung).
+- Hỗ trợ sửa lỗi chính tả phát âm tiếng Việt (Ví dụ: "bặt", "bặc", "mở" -> "on"; "tát", "tắc", "khóa" -> "off").
 
-Lệnh: "${text}"`;
+Ví dụ suy luận:
+- "bạn tên là gì" → {"commands": [], "speak": "Tôi là Jarvis, trợ lý thông minh của bạn.", "lang": "vi-VN"}
+- "what is your name" → {"commands": [], "speak": "My name is Jarvis, your smart home assistant.", "lang": "en-US"}
+- "bặt đèn 2 tắt đèn 1" → {"commands": [{"device":"light2","action":"on"}, {"device":"light1","action":"off"}], "speak": "Đã bật đèn hai và tắt đèn một", "lang": "vi-VN"}
+- "nhiệt độ phòng thế nào" → {"commands": [{"device":"lcd_tab","action":"2"}], "speak": "temp_humi", "lang": "vi-VN"}
+- "về màn hình chính" → {"commands": [{"device":"lcd_tab","action":"1"}], "speak": "Đã quay về màn hình chính", "lang": "vi-VN"}
+- "chuyển sang màn hình cảm biến" → {"commands": [{"device":"lcd_tab","action":"2"}], "speak": "Đã chuyển sang màn hình cảm biến", "lang": "vi-VN"}
+- "hiển thị lời nhắc" → {"commands": [{"device":"lcd_tab","action":"3"}], "speak": "Đã chuyển sang màn hình lời nhắc", "lang": "vi-VN"}
+
+Câu nói của người dùng: "${text}"`;
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey },
-      body: JSON.stringify({ model:'llama-3.3-70b-versatile', messages:[{role:'user',content:prompt}], temperature:0.15, max_tokens:250, response_format:{type:'json_object'} })
-    });
+    const res = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.1,
+          response_format: { type: "json_object" }
+        })
+      }
+    );
     const data = await res.json();
-    if (data.error) { addLog('e','❌ '+data.error.message); if (convActive) startSilTimer(); return; }
+    console.log('Groq raw:', JSON.stringify(data));
+
+    if (data.error) {
+      addLog('error', '❌ API lỗi: ' + data.error.message);
+      document.getElementById('voiceStatus').textContent = '❌ ' + data.error.message;
+      if (isConversationActive) startSilenceTimer();
+      return;
+    }
+
     const raw = data.choices?.[0]?.message?.content?.trim();
-    if (!raw) { if (convActive) startSilTimer(); return; }
-    const cmd = JSON.parse(raw.replace(/```json|```/g,'').trim());
-
-    if (cmd.commands && Array.isArray(cmd.commands)) {
-      cmd.commands.forEach((c,i) => { if (c.device&&c.action) setTimeout(()=>{ sendCommand(c.device,c.action); addLog('x','⚡ '+label(c.device,c.action)); },i*250); });
+    if (!raw) {
+      addLog('error', '❌ Groq không trả về nội dung.');
+      if (isConversationActive) startSilenceTimer();
+      return;
     }
 
-    let spText = cmd.speak||'', spLang = cmd.lang||'vi-VN';
-    if (spText==='temp_humi') {
-      spLang='vi-VN';
-      spText = currentTemp!==null ? `Nhiệt độ ${currentTemp} độ C, độ ẩm ${currentHumi} phần trăm.` : 'Chưa có dữ liệu cảm biến.';
-    }
-    if (spText) { addLog('a','🗣️ '+spText); speakTTS(spText, spLang); }
-    else { if (convActive) startSilTimer(); }
-  } catch(err) { addLog('e','❌ '+err.message); if (convActive) startSilTimer(); }
-}
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const cmd = JSON.parse(clean);
 
-// ===== TTS =====
-function speakTTS(text, lang='vi-VN') {
-  if (!window.speechSynthesis || !text) { if (convActive) startSilTimer(); return; }
-  window.speechSynthesis.cancel();
-  let cleaned = text;
-  if (lang.startsWith('vi')) {
-    cleaned = text
-      .replace(/°C/gi,' độ C').replace(/%/g,' phần trăm')
-      .replace(/\bjarvis\b/gi,'Gia-vít').replace(/\bgroq\b/gi,'Gờ-rốc')
-      .replace(/\b(đèn|quạt|cửa) 1\b/gi,'$1 một').replace(/\b(đèn|quạt|cửa) 2\b/gi,'$1 hai');
+    if (cmd.error) {
+      addLog('error', '❓ ' + cmd.error);
+      document.getElementById('voiceStatus').textContent = '❓ Không nhận ra lệnh';
+      speak("Tôi không hiểu câu lệnh này.");
+    } else {
+      let executedCount = 0;
+      let delayMs = 0;
+
+      if (cmd.commands && Array.isArray(cmd.commands)) {
+        cmd.commands.forEach(c => {
+          if (c.device && c.action) {
+            setTimeout(() => {
+              const msg = getActionText(c.device, c.action);
+              addLog('action', '⚡ ' + msg);
+              sendCommand(c.device, c.action);
+            }, delayMs);
+            delayMs += 250;
+            executedCount++;
+          }
+        });
+      }
+
+      // Xử lý phản hồi giọng nói (TTS)
+      let speakText = cmd.speak;
+      let speakLang = cmd.lang || 'vi-VN';
+      if (speakText) {
+        if (speakText === 'temp_humi') {
+          speakLang = 'vi-VN';
+          if (currentTemp !== null && currentHumi !== null) {
+            speakText = `Nhiệt độ trong nhà hiện tại là ${currentTemp} độ C, và độ ẩm là ${currentHumi} phần trăm.`;
+          } else {
+            speakText = "Hiện tại tôi chưa nhận được dữ liệu cảm biến từ thiết bị.";
+          }
+        }
+        addLog('ai', '🗣️ [' + speakLang + '] ' + speakText);
+        speak(speakText, speakLang);
+        document.getElementById('voiceStatus').textContent = speakText;
+      } else {
+        if (executedCount > 0) {
+          document.getElementById('voiceStatus').textContent = `✅ Đã gửi ${executedCount} lệnh`;
+        }
+        if (isConversationActive) startSilenceTimer();
+      }
+    }
+  } catch(err) {
+    addLog('error', '❌ ' + err.message);
+    document.getElementById('voiceStatus').textContent = '❌ Lỗi xử lý';
+    if (isConversationActive) startSilenceTimer();
   }
-  const u = new SpeechSynthesisUtterance(cleaned);
-  u.lang = lang; u.rate = lang.startsWith('vi')?1.05:1.0; u.pitch=1.0; u.volume=1.0;
-  const voices = window.speechSynthesis.getVoices();
-  const lp = lang.split('-')[0].toLowerCase();
-  const sV = localStorage.getItem('sh_vi_voice'), sE = localStorage.getItem('sh_en_voice');
-  let tv = null;
-  if (lp==='vi'&&sV) tv=voices.find(v=>v.name===sV);
-  else if (lp==='en'&&sE) tv=voices.find(v=>v.name===sE);
-  if (!tv) { const pool=voices.filter(v=>v.lang.toLowerCase().startsWith(lp)); tv=pool.find(v=>/natural|online|premium|enhanced|siri/i.test(v.name))||pool.find(v=>/google/i.test(v.name))||pool[0]; }
-  if (tv) u.voice=tv;
-  setState('SPEAK');
-  u.onend = ()=>{ if (convActive&&micState!=='USER'&&micState!=='PROC') startSilTimer(); };
-  u.onerror = (e)=>{ if (e.error!=='interrupted'&&convActive) startSilTimer(); };
-  window.speechSynthesis.speak(u);
 }
 
-// ===== SILENCE TIMER =====
-function startSilTimer() {
-  clearSilTimer(); setState('WAIT');
-  let n=5;
-  setVoiceStatus(`⏳ Chờ ${n}s... (nói để tiếp tục)`);
-  silTimer = setInterval(()=>{
-    n--;
-    if (n>0) setVoiceStatus(`⏳ Chờ ${n}s... (nói để tiếp tục)`);
-    else { clearSilTimer(); stopConv(); addLog('a','🔇 Cuộc trò chuyện kết thúc (hết 5s im lặng)'); }
-  },1000);
-}
-function clearSilTimer() { if (silTimer) { clearInterval(silTimer); silTimer=null; } }
-
-// ===== SET STATE =====
-function setState(s) {
-  micState=s;
-  const btn=document.getElementById('micBtn');
-  btn.className='mic-btn';
-  const icons = { IDLE:'🎤', LISTENING:'👂', USER:'💬', PROC:'⏳', SPEAK:'🗣️', WAIT:'⏳' };
-  btn.innerHTML = icons[s]||'🎤';
-  const stateClass = { LISTENING:'s-listening', USER:'s-user', PROC:'s-proc', SPEAK:'s-speak', WAIT:'s-wait' };
-  if (stateClass[s]) btn.classList.add(stateClass[s]);
-  const msgs = {
-    IDLE:'Nhấn mic để bắt đầu nói chuyện',
-    LISTENING:'🎙️ Đang nghe... Hãy nói tự nhiên',
-    PROC:'🤖 Jarvis đang suy nghĩ...',
-    SPEAK:'🔊 Jarvis đang trả lời...',
-  };
-  if (msgs[s]) setVoiceStatus(msgs[s]);
-}
-function setVoiceStatus(t) { document.getElementById('voiceStatus').textContent=t; }
-
-// ===== MQTT SEND =====
 function sendCommand(device, action) {
-  if (!mqttClient||!mqttClient.connected) { addLog('e','❌ MQTT chưa kết nối!'); return; }
-  mqttClient.publish(TOPIC_CMD, JSON.stringify({device,action}), {qos:1});
-  if (device==='all') ['light1','light2','fan'].forEach(d=>updateCard(d,action==='on'));
-  else updateCard(device, action==='on');
-}
-function manualToggle(dev) { const ns=!devStates[dev]; sendCommand(dev,ns?'on':'off'); addLog('x','👆 '+label(dev,ns?'on':'off')); }
-function sendReminder() { const t=document.getElementById('reminderInput').value.trim(); if(!t)return; sendCommand('reminder',t); addLog('x',`📝 Lời nhắc: "${t}"`); document.getElementById('reminderInput').value=''; }
-
-// ===== UI =====
-function updateCard(dev, isOn) {
-  devStates[dev]=isOn;
-  const c=document.getElementById('card-'+dev), s=document.getElementById('state-'+dev);
-  if (!c||!s) return;
-  c.className='dc'+(isOn?' on':'');
-  s.textContent = dev==='door'?(isOn?'Mở':'Đóng'):(isOn?'Bật':'Tắt');
-}
-function label(dev, act) {
-  const n={light1:'Đèn 1',light2:'Đèn 2',fan:'Quạt',door:'Cửa',all:'Tất cả',lcd_tab:'LCD',reminder:'LCD Nhắc'};
-  return (n[dev]||dev)+' → '+(act==='on'?'BẬT/MỞ':act==='off'?'TẮT/ĐÓNG':act);
-}
-function addLog(type, msg) {
-  const log=document.getElementById('chatLog');
-  const now=new Date().toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  const d=document.createElement('div');
-  d.className='cm';
-  d.innerHTML=`<span class="t">${now}</span><span class="${type}">${msg}</span>`;
-  log.appendChild(d); log.scrollTop=log.scrollHeight;
-  while(log.children.length>80) log.removeChild(log.firstChild);
-}
-function setStatus(text, color) {
-  document.getElementById('mqttStatus').textContent=text;
-  document.getElementById('mqttDot').className='dot'+(color?' '+color:'');
-}
-function switchTab(t) {
-  document.getElementById('tab-t1').style.display=t==='t1'?'block':'none';
-  document.getElementById('tab-t2').style.display=t==='t2'?'block':'none';
-  document.getElementById('bt1').classList.toggle('active',t==='t1');
-  document.getElementById('bt2').classList.toggle('active',t==='t2');
-}
-
-// ===== VOICE SELECTOR =====
-function populateVoices() {
-  if (!window.speechSynthesis) return;
-  const list=window.speechSynthesis.getVoices(); if(!list.length) return;
-  const viS=document.getElementById('viVoice'), enS=document.getElementById('enVoice');
-  const pvV=localStorage.getItem('sh_vi_voice'), pvE=localStorage.getItem('sh_en_voice');
-  viS.innerHTML='<option value="">-- Tự động --</option>';
-  enS.innerHTML='<option value="">-- Tự động --</option>';
-  list.filter(v=>v.lang.toLowerCase().startsWith('vi')).forEach(v=>{const o=document.createElement('option');o.value=o.textContent=v.name;viS.appendChild(o);});
-  list.filter(v=>v.lang.toLowerCase().startsWith('en')).forEach(v=>{const o=document.createElement('option');o.value=o.textContent=v.name;enS.appendChild(o);});
-  if(pvV) viS.value=pvV; if(pvE) enS.value=pvE;
-}
-function saveVoice() { localStorage.setItem('sh_vi_voice',document.getElementById('viVoice').value); localStorage.setItem('sh_en_voice',document.getElementById('enVoice').value); }
-
-// ===== RFID =====
-function handleRfid(d) {
-  const m=rfidList.find(c=>c.uid===d.uid), name=m?m.name:'';
-  const now=new Date().toLocaleString('vi');
-  rfidLogs.push({time:now,uid:d.uid,name,allowed:d.allowed});
-  if(rfidLogs.length>100) rfidLogs.shift();
-  localStorage.setItem('sh_rl',JSON.stringify(rfidLogs)); renderLogs();
-  if(!m) document.getElementById('newUid').value=d.uid;
-  if(d.allowed) { addLog('x',`🚪 Thẻ hợp lệ: ${name} (${d.uid})`); mqttClient.publish(TOPIC_CMD,JSON.stringify({device:'rfid_name',action:name}),{qos:1}); }
-  else addLog('e',`⚠️ Thẻ lạ: ${d.uid}`);
-}
-function addCard() {
-  const uid=document.getElementById('newUid').value.trim().toUpperCase(), name=document.getElementById('newName').value.trim();
-  if(!uid||!name){alert('Nhập đủ UID và Tên!');return;}
-  if(rfidList.some(c=>c.uid===uid)){alert('UID đã tồn tại!');return;}
-  rfidList.push({uid,name}); localStorage.setItem('sh_wl',JSON.stringify(rfidList));
-  renderWhitelist(); syncWhitelist();
-  document.getElementById('newUid').value=''; document.getElementById('newName').value='';
-  addLog('x',`📝 Đăng ký thẻ: ${name} (${uid})`);
-}
-function deleteCard(uid) { if(!confirm('Xóa thẻ này?'))return; rfidList=rfidList.filter(c=>c.uid!==uid); localStorage.setItem('sh_wl',JSON.stringify(rfidList)); renderWhitelist(); syncWhitelist(); }
-function syncWhitelist() { if(!mqttClient||!mqttClient.connected)return; mqttClient.publish(TOPIC_CMD,JSON.stringify({device:'rfid_sync',action:rfidList.map(c=>c.uid).join(',')}),{qos:1}); }
-function renderWhitelist() {
-  const tb=document.getElementById('wlBody'); if(!tb)return;
-  tb.innerHTML=rfidList.length?'':'<tr><td colspan="4" style="color:#666;text-align:center;">Chưa có thẻ</td></tr>';
-  rfidList.forEach(c=>{const tr=document.createElement('tr');tr.innerHTML=`<td><code>${c.uid}</code></td><td>${c.name}</td><td><span class="badge ok">Cho phép</span></td><td><button class="bd" onclick="deleteCard('${c.uid}')">Xóa</button></td>`;tb.appendChild(tr);});
-}
-function renderLogs() {
-  const tb=document.getElementById('logBody'); if(!tb)return;
-  tb.innerHTML=rfidLogs.length?'':'<tr><td colspan="4" style="color:#666;text-align:center;">Chưa có lịch sử</td></tr>';
-  rfidLogs.slice().reverse().forEach(l=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${l.time}</td><td><code>${l.uid}</code></td><td>${l.name||'Thẻ lạ'}</td><td><span class="badge ${l.allowed?'ok':'no'}">${l.allowed?'✅ Mở':'❌ Từ chối'}</span></td>`;tb.appendChild(tr);});
-}
-
-// ===== INIT =====
-window.onload = () => {
-  renderWhitelist(); renderLogs();
-  const k=localStorage.getItem('sh_groqkey')||'', p=localStorage.getItem('sh_mqttpass')||'';
-  document.getElementById('apiKey').value=k; document.getElementById('mqttPass').value=p;
-  if (window.speechSynthesis) {
-    const load=()=>populateVoices();
-    load(); window.speechSynthesis.onvoiceschanged=load;
-    setTimeout(load,500); setTimeout(load,1500);
+  if (!mqttClient || !mqttClient.connected) {
+    addLog('error', '❌ MQTT chưa kết nối!'); return;
   }
-  if (k&&p) setTimeout(connect,600);
+  mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device, action }), { qos:1 });
+  if (device === 'all') {
+    ['light1','light2','fan'].forEach(d => updateCard(d, action === 'on'));
+  } else {
+    updateCard(device, action === 'on');
+  }
+}
+
+function manualToggle(device) {
+  const newState = !deviceStates[device];
+  sendCommand(device, newState ? 'on' : 'off');
+  addLog('action', '👆 ' + getActionText(device, newState ? 'on' : 'off'));
+}
+
+function updateCard(device, state) {
+  deviceStates[device] = state;
+  const card = document.getElementById('card-' + device);
+  const stateEl = document.getElementById('state-' + device);
+  if (!card || !stateEl) return;
+  if (device === 'door') {
+    stateEl.textContent = state ? 'Mở' : 'Đóng';
+  } else {
+    stateEl.textContent = state ? 'Bật' : 'Tắt';
+  }
+  card.classList.toggle('on', state);
+}
+
+function getActionText(device, action) {
+  const deviceNames = { light1:'đèn 1', light2:'đèn 2', fan:'quạt', door:'cửa', all:'tất cả thiết bị', lcd_tab:'màn hình LCD' };
+  const dName = deviceNames[device] || device;
+  if (device === 'lcd_tab') {
+    const screenNames = { '1':'màn hình chính', '2':'màn hình cảm biến', '3':'màn hình lời nhắc' };
+    return `Chuyển ${dName} sang ${screenNames[action] || action}`;
+  }
+  const aText = action === 'on' ? (device === 'door' ? 'mở' : 'bật') : (device === 'door' ? 'đóng' : 'tắt');
+  return `${aText.charAt(0).toUpperCase() + aText.slice(1)} ${dName}`;
+}
+
+function addLog(type, text) {
+  const log = document.getElementById('chatLog');
+  const time = new Date().toLocaleTimeString('vi', {hour:'2-digit', minute:'2-digit'});
+  const div = document.createElement('div');
+  div.className = 'chat-msg';
+  div.innerHTML = `<span class="time">${time}</span><span class="${type}">${text}</span>`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function setStatus(text, color) {
+  document.getElementById('mqttStatus').textContent = text;
+  const dot = document.getElementById('mqttDot');
+  dot.className = 'dot' + (color ? ' ' + color : '');
+}
+
+// Hàm phát giọng nói (TTS) — tích hợp với bộ máy trạng thái hội thoại liên tục
+// Chấm điểm chất lượng giọng đọc: giọng "online" (localService === false, tức được
+// tổng hợp trên máy chủ/đám mây) gần như luôn tự nhiên hơn hẳn giọng "local" cài sẵn
+// trong máy, vốn thường là giọng robot chất lượng thấp. Đây là tín hiệu đáng tin cậy
+// hơn nhiều so với chỉ đoán qua tên giọng.
+function scoreVoice(v) {
+  let score = 0;
+  if (v.localService === false) score += 10;
+  const n = v.name.toLowerCase();
+  ['neural', 'wavenet', 'online', 'natural', 'premium', 'enhanced', 'plus', 'studio', 'siri', 'nâng cao', 'giọng nói']
+    .forEach(k => { if (n.includes(k)) score += 3; });
+  if (n.includes('google')) score += 1;
+  return score;
+}
+
+function pickBestVoice(matchedVoices) {
+  if (!matchedVoices.length) return null;
+  return [...matchedVoices].sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
+}
+
+// Làm sạch & chuẩn hoá văn bản trước khi đọc — áp dụng cho mọi ngôn ngữ:
+// bỏ định dạng Markdown (AI đôi khi lỡ trả về **đậm**, _nghiêng_, # tiêu đề...),
+// bỏ emoji, gọn khoảng trắng/dấu câu thừa.
+function stripMarkdownAndEmoji(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .replace(/`{1,3}([^`]*)`{1,3}/g, '$1')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}]/gu, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{2,}/g, '. ')
+    .trim();
+}
+
+// Chuẩn hoá ký hiệu/đơn vị sang dạng đọc được — đây là phần chính khắc phục lỗi
+// "ngọng" và bỏ sót ký tự như °C, %, đơn vị viết tắt...
+function normalizeSymbolsVi(text) {
+  return text
+    .replace(/°\s*C\b/gi, ' độ C')
+    .replace(/\bđộ\s*C\b/gi, 'độ xê')
+    .replace(/°\s*F\b/gi, ' độ F')
+    .replace(/\bđộ\s*F\b/gi, 'độ ép')
+    .replace(/°/g, ' độ ')
+    .replace(/%/g, ' phần trăm')
+    .replace(/\bkm\/h\b/gi, 'ki lô mét trên giờ')
+    .replace(/\bm\/s\b/gi, 'mét trên giây')
+    .replace(/\bm2\b|\bm²\b/gi, 'mét vuông')
+    .replace(/\bkg\b/gi, 'ki lô gam')
+    .replace(/&/g, ' và ')
+    .replace(/@/g, ' a còng ')
+    .replace(/\+/g, ' cộng ')
+    .replace(/(\d)\s*-\s*(\d)/g, '$1 đến $2')
+    .replace(/\.\.\./g, ', ')
+    .replace(/\b(đèn|quạt|cửa) 1\b/gi, '$1 một')
+    .replace(/\b(đèn|quạt|cửa) 2\b/gi, '$1 hai')
+    // Phiên âm từ tiếng Anh thông dụng sang tiếng Việt để giọng đọc vi-VN không bị ngọng
+    .replace(/\bjarvis\b/gi, 'Gia vít')
+    .replace(/\bapi\b/gi, 'A P I')
+    .replace(/\bgroq\b/gi, 'Gờ rốc')
+    .replace(/\bllama\b/gi, 'La ma')
+    .replace(/\bmqtt\b/gi, 'Mờ Quy Tê Tê')
+    .replace(/\bhivemq\b/gi, 'Hai vờ Mờ Quy')
+    .replace(/\bsmart\s*home\b/gi, 'Nhà thông minh')
+    .replace(/\bsmart\b/gi, 'thông minh')
+    .replace(/\bon\b/gi, 'bật')
+    .replace(/\boff\b/gi, 'tắt')
+    .replace(/\bled\b/gi, 'lét')
+    .replace(/\besp32\b/gi, 'E ét pê ba hai')
+    .replace(/\besp\b/gi, 'E ét pê')
+    .replace(/\bwifi\b/gi, 'Quai phai')
+    .replace(/\bwi-fi\b/gi, 'Quai phai');
+}
+
+function speak(text, langCode = 'vi-VN') {
+  if (!window.speechSynthesis || !text) {
+    if (isConversationActive) startSilenceTimer();
+    return;
+  }
+  window.speechSynthesis.cancel();
+
+  let cleanText = stripMarkdownAndEmoji(text);
+  if (langCode.startsWith('vi')) {
+    cleanText = normalizeSymbolsVi(cleanText);
+  } else {
+    // Với ngôn ngữ khác vẫn nên đọc được các ký hiệu phổ biến thay vì bỏ qua
+    cleanText = cleanText.replace(/°\s*C\b/gi, ' degrees C').replace(/°\s*F\b/gi, ' degrees F').replace(/%/g, ' percent');
+  }
+
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  utterance.lang = langCode;
+  
+  // Tăng nhẹ tốc độ đọc đối với tiếng Việt
+  utterance.rate = langCode.startsWith('vi') ? 1.05 : 1.0;
+  utterance.pitch = 1.0;
+  utterance.volume = 1.0;
+
+  const voices = window.speechSynthesis.getVoices();
+  const langPrefix = langCode.split('-')[0].toLowerCase();
+  
+  let targetVoice = null;
+
+  // 1. Kiểm tra lựa chọn thủ công từ localStorage
+  const savedViVoice = localStorage.getItem('sh_vi_voice');
+  const savedEnVoice = localStorage.getItem('sh_en_voice');
+
+  if (langPrefix === 'vi' && savedViVoice) {
+    targetVoice = voices.find(v => v.name === savedViVoice);
+  } else if (langPrefix === 'en' && savedEnVoice) {
+    targetVoice = voices.find(v => v.name === savedEnVoice);
+  }
+
+  // 2. Nếu không chọn thủ công hoặc giọng thủ công không khả dụng, chấm điểm chất lượng
+  //    và tự động chọn giọng tốt nhất hiện có (ưu tiên giọng online/cloud).
+  if (!targetVoice) {
+    const matchedVoices = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
+    targetVoice = pickBestVoice(matchedVoices);
+  }
+  
+  if (targetVoice) {
+    utterance.voice = targetVoice;
+    console.log('Selected Voice:', targetVoice.name, '(' + langCode + ')', 'score:', scoreVoice(targetVoice));
+  }
+
+  if (isConversationActive) {
+    setLiveState('SPEAKING');
+
+    utterance.onend = () => {
+      console.log('AI nói xong, bắt đầu chờ 5s');
+      if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING') {
+        startSilenceTimer();
+      }
+    };
+
+    utterance.onerror = (e) => {
+      console.warn('Lỗi phát âm thanh:', e);
+      if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING' && e.error !== 'interrupted') {
+        startSilenceTimer();
+      }
+    };
+  }
+
+  window.speechSynthesis.speak(utterance);
+}
+
+// Đọc thử một câu mẫu chứa các ký tự/đơn vị hay bị đọc sai, để người dùng nghe và
+// chọn giọng phù hợp ngay trong phần Cấu hình, không cần chạy cả luồng hội thoại.
+function testVoice(langPrefix) {
+  if (langPrefix === 'vi') {
+    speak('Xin chào, tôi là Jarvis. Nhiệt độ phòng hiện tại là hai mươi tám phẩy năm độ C, độ ẩm bảy mươi phần trăm.', 'vi-VN');
+  } else {
+    speak('Hello, I am Jarvis. The room temperature is seventy five degrees, humidity is sixty percent.', 'en-US');
+  }
+}
+
+function populateVoiceSelectors() {
+  if (!window.speechSynthesis) return;
+  const list = window.speechSynthesis.getVoices();
+  
+  const viSelect = document.getElementById('viVoiceSelect');
+  const enSelect = document.getElementById('enVoiceSelect');
+  if (!viSelect || !enSelect) return;
+
+  const prevVi = viSelect.value || localStorage.getItem('sh_vi_voice');
+  const prevEn = enSelect.value || localStorage.getItem('sh_en_voice');
+
+  viSelect.innerHTML = '<option value="">-- Tự động chọn (tốt nhất) --</option>';
+  enSelect.innerHTML = '<option value="">-- Tự động chọn (tốt nhất) --</option>';
+
+  const byScoreDesc = (a, b) => scoreVoice(b) - scoreVoice(a);
+  const viVoices = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi')).sort(byScoreDesc);
+  const enVoices = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('en')).sort(byScoreDesc);
+
+  viVoices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = v.name + (v.localService === false ? ' ⭐ Online' : '');
+    viSelect.appendChild(opt);
+  });
+
+  enVoices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = v.name + (v.localService === false ? ' ⭐ Online' : '');
+    enSelect.appendChild(opt);
+  });
+
+  if (prevVi) viSelect.value = prevVi;
+  if (prevEn) enSelect.value = prevEn;
+}
+
+function saveSelectedVoices() {
+  const viVal = document.getElementById('viVoiceSelect').value;
+  const enVal = document.getElementById('enVoiceSelect').value;
+  localStorage.setItem('sh_vi_voice', viVal);
+  localStorage.setItem('sh_en_voice', enVal);
+}
+
+// ===== QUẢN LÝ THẺ RFID & LỜI NHẮC =====
+let rfidWhitelist = JSON.parse(localStorage.getItem('sh_rfid_whitelist') || '[]');
+let rfidLogs = JSON.parse(localStorage.getItem('sh_rfid_logs') || '[]');
+
+function switchWebTab(tabName) {
+  document.getElementById('tab-control').style.display = tabName === 'control' ? 'block' : 'none';
+  document.getElementById('tab-rfid').style.display = tabName === 'rfid' ? 'block' : 'none';
+  
+  document.getElementById('btn-tab-control').classList.toggle('active', tabName === 'control');
+  document.getElementById('btn-tab-rfid').classList.toggle('active', tabName === 'rfid');
+}
+
+function saveWhitelist() {
+  localStorage.setItem('sh_rfid_whitelist', JSON.stringify(rfidWhitelist));
+  renderWhitelist();
+  syncWhitelistToEsp32();
+}
+
+function saveLogs() {
+  localStorage.setItem('sh_rfid_logs', JSON.stringify(rfidLogs));
+  renderLogs();
+}
+
+function renderWhitelist() {
+  const tbody = document.getElementById('rfidWhitelistBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (rfidWhitelist.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666;">Chưa có thẻ nào được đăng ký</td></tr>';
+    return;
+  }
+  rfidWhitelist.forEach(card => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><code>${card.uid}</code></td>
+      <td>${card.name}</td>
+      <td><span class="badge allowed">Cho phép</span></td>
+      <td><button class="btn-danger" onclick="deleteCard('${card.uid}')">Xóa</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderLogs() {
+  const tbody = document.getElementById('rfidLogsBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (rfidLogs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666;">Chưa có lịch sử ra vào</td></tr>';
+    return;
+  }
+  rfidLogs.slice().reverse().forEach(log => {
+    const tr = document.createElement('tr');
+    const badgeClass = log.allowed ? 'allowed' : 'denied';
+    const badgeText = log.allowed ? 'Mở cửa thành công' : 'Bị từ chối';
+    tr.innerHTML = `
+      <td>${log.time}</td>
+      <td><code>${log.uid}</code></td>
+      <td>${log.name || 'Thẻ lạ'}</td>
+      <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function addNewCard() {
+  const uidInput = document.getElementById('newCardUid');
+  const nameInput = document.getElementById('newCardName');
+  const uid = uidInput.value.trim().toUpperCase();
+  const name = removeVietnameseTones(nameInput.value.trim());
+  
+  if (!uid || !name) {
+    alert('Vui lòng nhập đầy đủ Mã thẻ UID và Tên chủ thẻ (không dấu)!');
+    return;
+  }
+  
+  if (rfidWhitelist.some(c => c.uid === uid)) {
+    alert('Mã thẻ UID này đã được đăng ký!');
+    return;
+  }
+  
+  rfidWhitelist.push({ uid, name });
+  saveWhitelist();
+  
+  uidInput.value = '';
+  nameInput.value = '';
+  addLog('action', `📝 Đăng ký thẻ mới: ${name} (${uid})`);
+}
+
+function deleteCard(uid) {
+  if (!confirm('Bạn có chắc chắn muốn xóa thẻ này?')) return;
+  rfidWhitelist = rfidWhitelist.filter(c => c.uid !== uid);
+  saveWhitelist();
+  addLog('action', `❌ Đã xóa thẻ: ${uid}`);
+}
+
+function syncWhitelistToEsp32() {
+  if (!mqttClient || !mqttClient.connected) return;
+  const uids = rfidWhitelist.map(c => c.uid).join(',') + (rfidWhitelist.length > 0 ? ',' : '');
+  mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'rfid_sync', action: uids }), { qos: 1 });
+}
+
+function removeVietnameseTones(str) {
+  str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+  str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+  str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+  str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+  str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+  str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+  str = str.replace(/đ/g, "d");
+  str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+  str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+  str = str.replace(/Ì|Í|Ị|ỉ|Ĩ/g, "I");
+  str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+  str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+  str = str.replace(/Ỳ|Ý|Y|Ỷ|Ỹ/g, "Y");
+  str = str.replace(/Đ/g, "D");
+  return str.trim();
+}
+
+function sendReminder() {
+  const input = document.getElementById('reminderInput');
+  const text = removeVietnameseTones(input.value.trim());
+  if (!text) {
+    alert('Vui lòng nhập lời nhắc!');
+    return;
+  }
+  sendCommand('reminder', text);
+  addLog('action', `📝 Đã gửi lời nhắc lên LCD: "${text}"`);
+  input.value = '';
+}
+
+window.onload = () => {
+  renderWhitelist();
+  renderLogs();
+  // Khắc phục lỗi nạp danh sách giọng nói trễ hoặc không kích hoạt sự kiện trên Safari iOS
+  if (window.speechSynthesis) {
+    const showVoices = () => {
+      const list = window.speechSynthesis.getVoices();
+      if (list && list.length > 0) {
+        populateVoiceSelectors();
+        const viNames = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi')).map(v => v.name);
+        if (viNames.length > 0 && !window.hasLoggedVoices) {
+          window.hasLoggedVoices = true;
+          addLog('action', '🎙️ Giọng Việt tìm thấy: ' + viNames.join(', '));
+        }
+      }
+    };
+
+    // Chạy các lớp kích hoạt khác nhau
+    showVoices();
+    window.speechSynthesis.onvoiceschanged = showVoices;
+    setTimeout(showVoices, 300);
+    setTimeout(showVoices, 1000);
+  }
+
+  const k = localStorage.getItem('sh_groqkey') || '';
+  const p = localStorage.getItem('sh_mqttpass') || '';
+  document.getElementById('apiKey').value = k;
+  document.getElementById('mqttPass').value = p;
+  
+  // Chỉ tự động kết nối HiveMQ nếu đã lưu cấu hình trước đó trong trình duyệt
+  if (k && p) {
+    setTimeout(connect, 500);
+  }
 };
 </script>
 </body>
