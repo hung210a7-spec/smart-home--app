@@ -494,26 +494,8 @@ body {
   <div class="setup-panel">
     <h3>Cấu hình</h3>
     <div class="input-group">
-      <label>AI Provider (Nhà cung cấp AI)</label>
-      <select id="aiProvider" onchange="onProviderChange()">
-        <option value="groq">Groq (Llama)</option>
-        <option value="gemini">Google Gemini</option>
-      </select>
-    </div>
-    <div class="input-group">
-      <label id="apiKeyLabel">Groq API Key</label>
-      <input type="password" id="apiKey" placeholder="Nhập API Key" />
-    </div>
-    <div class="input-group">
-      <label>AI Model (Mẫu AI)</label>
-      <select id="aiModel"></select>
-    </div>
-    <div class="input-group">
-      <label>Ngôn ngữ giọng nói (Speech Language)</label>
-      <select id="sttLang">
-        <option value="vi-VN">Tiếng Việt (vi-VN)</option>
-        <option value="en-US">English (en-US)</option>
-      </select>
+      <label>Groq API Key</label>
+      <input type="password" id="apiKey" placeholder="gsk_..." />
     </div>
     <div class="input-group">
       <label>Mật khẩu HiveMQ</label>
@@ -532,6 +514,30 @@ body {
 
   <div class="voice-section">
     <p class="voice-hint">Nhấn mic và nói lệnh điều khiển</p>
+
+    <!-- STT Language + Clear History -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:6px;background:var(--panel-inset);border:1px solid var(--line);border-radius:8px;padding:5px 10px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:0.65em;color:var(--brass);text-transform:uppercase;letter-spacing:1px;">Giọng nhận</span>
+        <select id="sttLangSelect" onchange="changeSttLang(this.value)"
+          style="background:transparent;border:none;color:var(--ink);font-size:0.82em;outline:none;cursor:pointer;font-family:'Inter',sans-serif;">
+          <option value="">🌐 Tự động</option>
+          <option value="vi-VN">🇻🇳 Tiếng Việt</option>
+          <option value="en-US">🇺🇸 English</option>
+        </select>
+      </div>
+      <button onclick="clearHistory()" title="Xóa lịch sử hội thoại"
+        style="background:var(--panel-inset);border:1px solid var(--line);border-radius:8px;padding:5px 10px;color:var(--ink-dim);font-size:0.8em;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.2s;"
+        onmouseover="this.style.borderColor='var(--brass-dim)'" onmouseout="this.style.borderColor='var(--line)'">
+        🧹 Xóa nhớ
+      </button>
+    </div>
+
+    <!-- AI model badge -->
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.62em;color:var(--brass-dim);margin-bottom:14px;letter-spacing:0.5px;">
+      ENGINE: <span style="color:var(--signal-green);">llama-3.3-70b-versatile</span> · MEMORY: <span id="historyCount" style="color:var(--signal-amber);">0</span> lượt
+    </div>
+
     <button class="mic-btn" id="micBtn" onclick="startVoice()" disabled>🎤</button>
     <div class="voice-status" id="voiceStatus">Chưa kết nối MQTT</div>
   </div>
@@ -587,13 +593,14 @@ body {
   </div>
 
   <div class="commands-hint">
-    <h3>📋 Lệnh mẫu</h3>
-    <div class="cmd">• <span>"trời nóng quá"</span> / <span>"oi bức thế"</span></div>
-    <div class="cmd">• <span>"bật đèn lên"</span> / <span>"tắt hết đi"</span></div>
-    <div class="cmd">• <span>"đi ngủ đây"</span> / <span>"về nhà rồi"</span></div>
-    <div class="cmd">• <span>"tối quá"</span> / <span>"chói mắt quá"</span></div>
-    <div class="cmd">• <span>"turn on the fan"</span> / <span>"lights off"</span></div>
-    <div class="cmd">• <span>"chuyển sang màn hình cảm biến"</span> / <span>"về màn hình chính"</span></div>
+    <h3>📋 Lệnh mẫu — Tiếng Việt & English</h3>
+    <div class="cmd">• <span>"bật đèn lên"</span> / <span>"turn on the lights"</span></div>
+    <div class="cmd">• <span>"trời nóng quá"</span> / <span>"it's really hot in here"</span> → bật quạt</div>
+    <div class="cmd">• <span>"đi ngủ đây"</span> / <span>"goodnight, turn everything off"</span></div>
+    <div class="cmd">• <span>"nhiệt độ bao nhiêu"</span> / <span>"what's the temperature?"</span></div>
+    <div class="cmd">• <span>"kể chuyện cười đi"</span> / <span>"tell me a joke"</span> → hội thoại AI</div>
+    <div class="cmd">• <span>"I'm leaving"</span> / <span>"tôi ra ngoài rồi"</span> → tắt hết + khóa cửa</div>
+    <div class="cmd" style="margin-top:8px;color:var(--brass-dim);font-size:0.75em;">💡 Jarvis nhớ ngữ cảnh — nói tiếp "tắt nó đi" sau khi hỏi về quạt là hiểu ngay</div>
   </div>
 </div>
 
@@ -666,52 +673,13 @@ const deviceStates = { light1:false, light2:false, fan:false, door:false };
 let currentTemp = null;
 let currentHumi = null;
 
-
-const MODELS = {
-  groq: [
-    { value: 'llama-3.3-70b-versatile', text: 'Llama 3.3 70B (Siêu khôn - Khuyên dùng)' },
-    { value: 'llama-3.1-8b-instant', text: 'Llama 3.1 8B (Nhanh - Nhẹ)' }
-  ],
-  gemini: [
-    { value: 'gemini-2.5-flash', text: 'Gemini 2.5 Flash (Khôn nhất - Mới nhất)' },
-    { value: 'gemini-1.5-flash', text: 'Gemini 1.5 Flash (Nhanh)' },
-    { value: 'gemini-1.5-pro', text: 'Gemini 1.5 Pro (Siêu khôn)' }
-  ]
-};
-
-function onProviderChange() {
-  const provider = document.getElementById('aiProvider').value;
-  const label = document.getElementById('apiKeyLabel');
-  if (provider === 'gemini') {
-    label.textContent = 'Gemini API Key';
-  } else {
-    label.textContent = 'Groq API Key';
-  }
-  
-  const modelSelect = document.getElementById('aiModel');
-  modelSelect.innerHTML = '';
-  MODELS[provider].forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m.value;
-    opt.textContent = m.text;
-    modelSelect.appendChild(opt);
-  });
-}
-
 function connect() {
-  const provider = document.getElementById('aiProvider').value;
   const apiKey  = document.getElementById('apiKey').value.trim();
-  const model = document.getElementById('aiModel').value;
-  const sttLang = document.getElementById('sttLang').value;
   const mqttPass = document.getElementById('mqttPass').value.trim();
-  
-  if (!apiKey)   { alert('Vui lòng nhập API Key!'); return; }
-  if (!mqttPass) { alert('Vui lòng nhập mật khẩu HiveMQ!'); return; }
+  if (!apiKey)   { alert('Nhập Groq API Key!'); return; }
+  if (!mqttPass) { alert('Nhập mật khẩu HiveMQ!'); return; }
 
-  localStorage.setItem('sh_ai_provider', provider);
   localStorage.setItem('sh_groqkey', apiKey);
-  localStorage.setItem('sh_ai_model', model);
-  localStorage.setItem('sh_stt_lang', sttLang);
   localStorage.setItem('sh_mqttpass', mqttPass);
   setStatus('Đang kết nối...', 'yellow');
 
@@ -824,6 +792,50 @@ let audioCtx = null;
 let recognition = null;
 let recRestartTimer = null;
 
+// ── CONVERSATION MEMORY ──────────────────────────────────────
+// Lưu lịch sử hội thoại để AI nhớ ngữ cảnh (tối đa MAX_HISTORY lượt)
+const MAX_HISTORY = 10;   // 10 lượt = 20 messages (user+assistant)
+let conversationHistory = [];   // [{role:'user',content:'...'},{role:'assistant',content:'...'}]
+
+function addToHistory(role, content) {
+  conversationHistory.push({ role, content });
+  // Giữ tối đa MAX_HISTORY lượt, nhưng luôn giữ nguyên cặp user/assistant
+  while (conversationHistory.length > MAX_HISTORY * 2) {
+    conversationHistory.shift();
+  }
+  updateHistoryCount();
+}
+
+function clearHistory() {
+  conversationHistory = [];
+  updateHistoryCount();
+  addLog('action', '🧹 Đã xóa lịch sử hội thoại — bắt đầu cuộc trò chuyện mới');
+}
+
+function changeSttLang(lang) {
+  sttLang = lang;
+  localStorage.setItem('sh_stt_lang', lang);
+  // Nếu đang nhận dạng → khởi động lại recognition với ngôn ngữ mới
+  if (isConversationActive && recognition) {
+    try { recognition.stop(); } catch(e) {}
+    recognition = null;
+    setTimeout(() => {
+      recognition = initRecognition();
+      if (recognition) try { recognition.start(); } catch(e) {}
+    }, 200);
+  }
+  const names = { '': '🌐 Tự động', 'vi-VN': '🇻🇳 Tiếng Việt', 'en-US': '🇺🇸 English' };
+  addLog('action', '🎙️ Chuyển nhận dạng giọng nói: ' + (names[lang] || lang));
+}
+
+function updateHistoryCount() {
+  const el = document.getElementById('historyCount');
+  if (el) el.textContent = Math.floor(conversationHistory.length / 2);
+}
+
+// STT language: '' = auto-detect, 'vi-VN', 'en-US'
+let sttLang = localStorage.getItem('sh_stt_lang') || '';
+
 function initRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
@@ -833,9 +845,7 @@ function initRecognition() {
   const rec = new SR();
   rec.continuous      = true;
   rec.interimResults  = true;
-  // Để trống → Chrome tự detect ngôn ngữ (Việt + Anh cùng phiên)
-  // Fallback: 'vi-VN' nếu auto detect không hoạt động trên thiết bị cũ
-  rec.lang            = '';
+  rec.lang            = sttLang;  // '' = auto-detect | 'vi-VN' | 'en-US'
 
   rec.onstart = () => console.log('[STT] started');
 
@@ -1003,202 +1013,216 @@ function startSilenceTimer() {
   }, 1000);
 }
 
-// Xử lý gửi văn bản giọng nói lên API Groq
+// ============================================================
+//  SYSTEM PROMPT — tách riêng, không nhét vào user message
+// ============================================================
+function buildSystemPrompt() {
+  const sensorSnap = (currentTemp !== null && currentHumi !== null)
+    ? `Nhiệt độ hiện tại: ${currentTemp}°C, Độ ẩm: ${currentHumi}%.`
+    : 'Chưa nhận được dữ liệu cảm biến.';
+
+  return `You are Jarvis, a smart home AI assistant. You are intelligent, friendly, and support multiple languages fluently (Vietnamese, English, Japanese, Chinese, French, etc.).
+
+## YOUR ROLE
+You have TWO modes, and you should blend them naturally:
+1. **Device Control** — control smart home devices from user's voice/text
+2. **Conversation** — answer questions, chat, explain things intelligently like a modern AI assistant (ChatGPT-level)
+
+## SMART HOME DEVICES
+| ID       | Name (VI/EN)         | Actions              |
+|----------|----------------------|----------------------|
+| light1   | Đèn 1 / Light 1      | on, off              |
+| light2   | Đèn 2 / Light 2      | on, off              |
+| fan      | Quạt / Fan           | on, off              |
+| door     | Cửa / Door           | on (open), off (close)|
+| all      | Tất cả / All devices | on, off              |
+| lcd_tab  | Màn hình LCD         | "1" (home), "2" (sensor), "3" (reminder) |
+
+## CURRENT SENSOR DATA (live)
+${sensorSnap}
+
+## DEVICE STATES
+Đèn 1: ${deviceStates.light1 ? 'BẬT' : 'TẮT'} | Đèn 2: ${deviceStates.light2 ? 'BẬT' : 'TẮT'} | Quạt: ${deviceStates.fan ? 'BẬT' : 'TẮT'} | Cửa: ${deviceStates.door ? 'MỞ' : 'ĐÓNG'}
+
+## OUTPUT FORMAT
+Always respond with ONLY valid JSON, no extra text, no markdown fences:
+{
+  "commands": [{"device": "device_id", "action": "on|off|1|2|3"}],
+  "speak": "your response text",
+  "lang": "BCP-47 language code"
+}
+
+## RULES
+- **Language**: Detect which language the user is using and ALWAYS reply in the SAME language. English in → English out. Vietnamese in → Vietnamese out.
+- **Device commands**: Extract all devices mentioned. Multiple commands in one sentence are fine.
+- **Conversational questions**: Leave "commands" as [], answer in "speak" naturally and helpfully. Be concise for voice (2-4 sentences). Use "lang" matching the user's language.
+- **Sensor query** ("nhiệt độ", "temperature", "how hot", "bao nhiêu độ"...): Set speak="temp_humi", commands=[{"device":"lcd_tab","action":"2"}]
+- **Context memory**: You have memory of previous turns. Use it — if user says "turn it off" after asking about the fan, you know "it" = fan.
+- **Vietnamese speech-to-text quirks**: Fix common STT errors: "bặt"→on, "tắt/tát/tắc"→off, "mờ/mỡ"→open, "khóa"→close, "bặc/bắt"→on.
+- **English commands**: Understand natural English: "turn off everything", "dim the lights", "open the door", "it's hot" (→ fan on), "it's dark" (→ lights on), etc.
+- **Smart inference**: "I'm going to sleep" → lights off + fan on. "I'm leaving" → all off + door locked. "It's stuffy" → fan on.
+- For non-device questions (weather, facts, advice, math, jokes...) → answer like a knowledgeable assistant. Be helpful, not robotic.
+- Keep "speak" text suitable for text-to-speech: no markdown, no bullet points, no special characters.
+
+## EXAMPLES
+User: "bật đèn lên" → {"commands":[{"device":"light1","action":"on"},{"device":"light2","action":"on"}],"speak":"Đã bật đèn rồi ạ.","lang":"vi-VN"}
+User: "turn on the fan" → {"commands":[{"device":"fan","action":"on"}],"speak":"Fan is now on.","lang":"en-US"}
+User: "it's really hot in here" → {"commands":[{"device":"fan","action":"on"}],"speak":"I turned the fan on for you. Hope that helps cool things down!","lang":"en-US"}
+User: "nhiệt độ bao nhiêu" → {"commands":[{"device":"lcd_tab","action":"2"}],"speak":"temp_humi","lang":"vi-VN"}
+User: "what's 15 times 37" → {"commands":[],"speak":"15 times 37 is 555.","lang":"en-US"}
+User: "kể tôi nghe một câu chuyện cười" → {"commands":[],"speak":"Được rồi! Có một ông lập trình viên muốn ra ngoài nhưng vợ bảo: Anh ơi, trước khi đi anh đổ rác nhé. Ông ta nghĩ một lúc rồi nói: Em có thể gửi yêu cầu qua email không, anh đang trong chế độ không làm phiền.","lang":"vi-VN"}
+User: "tắt hết đi ngủ" → {"commands":[{"device":"all","action":"off"}],"speak":"Tắt tất cả thiết bị rồi nhé. Chúc anh ngủ ngon!","lang":"vi-VN"}`;
+}
+
+// ============================================================
+//  CORE AI FUNCTION — nâng cấp toàn diện
+// ============================================================
 async function processLiveSpeech(text) {
-  addLog('user', '💬 "' + text + '"');
-  const provider = localStorage.getItem('sh_ai_provider') || 'groq';
+  addLog('user', '🎙️ "' + text + '"');
   const apiKey = localStorage.getItem('sh_groqkey');
-  const model = localStorage.getItem('sh_ai_model') || 'llama-3.3-70b-versatile';
-  
-  if (!apiKey || apiKey.trim() === '') {
-    addLog('error', '❌ Lỗi: Chưa cấu hình API Key trong tab Cấu hình!');
-    document.getElementById('voiceStatus').textContent = '❌ Chưa cấu hình API Key';
+  if (!apiKey) {
+    addLog('error', '❌ Chưa nhập Groq API Key!');
     if (isConversationActive) startSilenceTimer();
     return;
   }
 
-  const prompt = `Bạn là trợ lý ảo nhà thông minh tên Jarvis. Bạn có 2 nhiệm vụ:
-1. Nhận diện và thực thi điều khiển thiết bị thông minh khi được yêu cầu.
-2. Trả lời các câu hỏi trò chuyện, kiến thức thông thường của người dùng một cách đầy đủ, thông minh, chi tiết và thân thiện bằng CHÍNH NGÔN NGỮ mà người dùng đang giao tiếp (hỗ trợ cả Tiếng Việt, Tiếng Anh, Tiếng Nhật, v.v.).
+  // Thêm tin nhắn user vào lịch sử
+  addToHistory('user', text);
 
-Thiết bị hợp lệ: light1 (đèn 1), light2 (đèn 2), fan (quạt), door (cửa), lcd_tab (màn hình hiển thị LCD, hành động là "1" - màn hình chính/màn chủ, "2" - màn hình cảm biến, "3" - màn hình lời nhắc), all (tất cả).
-Hành động hợp lệ: "on" (bật/mở), "off" (tắt/đóng/khóa) hoặc "1", "2", "3" (dành riêng cho lcd_tab).
-
-Yêu cầu trả về JSON định dạng sau (không giải thích hay thêm văn bản khác ngoài JSON):
-{
-  "commands": [
-    { "device": "tên_thiết_bị", "action": "hành_động" }
-  ],
-  "speak": "câu_trả_lời_hoặc_câu_nói_phản_hồi",
-  "lang": "ma_ngôn_ngữ_bcp47"
-}
-
-Quy tắc:
-- Khi người dùng ra lệnh điều khiển: Tạo danh sách lệnh trong "commands" và phản hồi xác nhận trong "speak" bằng ngôn ngữ phù hợp.
-- Khi hỏi về nhiệt độ, độ ẩm, thời tiết trong nhà: Đặt "commands" là [{"device": "lcd_tab", "action": "2"}] và "speak" là "temp_humi". Trường "lang" đặt là "vi-VN".
-- Khi người dùng yêu cầu chuyển màn hình, đổi tab LCD: Đặt lệnh tương ứng của "lcd_tab" vào "commands".
-- Khi người dùng trò chuyện, hỏi thông tin: Trả lời trực tiếp vào trường "speak" một cách thông minh, chi tiết bằng chính ngôn ngữ họ dùng, đồng thời ghi mã ngôn ngữ BCP-47 tương ứng vào trường "lang" (Ví dụ: "en-US" cho tiếng Anh, "vi-VN" cho tiếng Việt, "ja-JP" cho tiếng Nhật, "zh-CN" cho tiếng Trung).
-- Hỗ trợ sửa lỗi chính tả phát âm tiếng Việt (Ví dụ: "bật", "bậc", "mở" -> "on"; "tắt", "tặc", "khóa" -> "off").
-
-Ví dụ suy luận:
-- "bạn tên là gì"   {"commands": [], "speak": "Tôi là Jarvis, trợ lý thông minh của bạn.", "lang": "vi-VN"}
-- "what is your name"   {"commands": [], "speak": "My name is Jarvis, your smart home assistant.", "lang": "en-US"}
-- "bật đèn 2 tắt đèn 1"   {"commands": [{"device":"light2","action":"on"}, {"device":"light1","action":"off"}], "speak": "Đã bật đèn hai và tắt đèn một", "lang": "vi-VN"}
-- "nhiệt độ phòng thế nào"   {"commands": [{"device":"lcd_tab","action":"2"}], "speak": "temp_humi", "lang": "vi-VN"}
-- "về màn hình chính"   {"commands": [{"device":"lcd_tab","action":"1"}], "speak": "Đã quay về màn hình chính", "lang": "vi-VN"}
-- "chuyển sang màn hình cảm biến"   {"commands": [{"device":"lcd_tab","action":"2"}], "speak": "Đã chuyển sang màn hình cảm biến", "lang": "vi-VN"}
-- "hiển thị lời nhắc"   {"commands": [{"device":"lcd_tab","action":"3"}], "speak": "Đã chuyển sang màn hình lời nhắc", "lang": "vi-VN"}
-
-Câu nói của người dùng: "${text}"`;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s timeout
+  // Xây dựng messages array đúng chuẩn OpenAI:
+  // [system] + [lịch sử N-1 lượt trước] + [user hiện tại]
+  const historyToSend = conversationHistory.slice(0, -1); // Bỏ user message cuối (đã trong history)
+  const messages = [
+    { role: 'system', content: buildSystemPrompt() },
+    ...historyToSend,
+    { role: 'user', content: text }
+  ];
 
   try {
-    let res, data;
-    if (provider === 'gemini') {
-      res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          signal: controller.signal,
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: prompt
-              }]
-            }],
-            generationConfig: {
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: "OBJECT",
-                properties: {
-                  commands: {
-                    type: "ARRAY",
-                    items: {
-                      type: "OBJECT",
-                      properties: {
-                        device: { "type": "STRING" },
-                        action: { "type": "STRING" }
-                      },
-                      required: ["device", "action"]
-                    }
-                  },
-                  speak: { "type": "STRING" },
-                  lang: { "type": "STRING" }
-                },
-                required: ["commands", "speak", "lang"]
-              }
-            }
-          })
-        }
-      );
-      clearTimeout(timeoutId);
-      data = await res.json();
-      console.log('Gemini raw:', JSON.stringify(data));
-      
-      if (data.error) {
-        throw new Error(data.error.message);
-      }
-      
-      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawText) {
-        throw new Error("Gemini không trả về nội dung.");
-      }
-      var clean = rawText.trim();
-    } else {
-      // Groq API
-      res = await fetch(
-        'https://api.groq.com/openai/v1/chat/completions',
-        {
-          method: 'POST',
-          signal: controller.signal,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + apiKey
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.1,
-            response_format: { type: "json_object" }
-          })
-        }
-      );
-      clearTimeout(timeoutId);
-      data = await res.json();
-      console.log('Groq raw:', JSON.stringify(data));
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({
+        // ── MODEL NÂNG CẤP: 70B thay vì 8B ──────────────────
+        // llama-3.3-70b-versatile: thông minh hơn ~8x, tiếng Anh/Việt xuất sắc
+        model: 'llama-3.3-70b-versatile',
+        messages: messages,
+        temperature: 0.5,          // Cao hơn chút để hội thoại tự nhiên hơn
+        max_tokens: 512,           // Đủ cho câu trả lời hội thoại dài
+        response_format: { type: 'json_object' }
+      })
+    });
 
-      if (data.error) {
-        throw new Error(data.error.message);
-      }
+    const data = await res.json();
+    console.log('[Groq 70B]', JSON.stringify(data).slice(0, 300));
 
-      const rawText = data.choices?.[0]?.message?.content?.trim();
-      if (!rawText) {
-        throw new Error("Groq không trả về nội dung.");
-      }
-      var clean = rawText.replace(/```json|```/g, '').trim();
-    }
-
-    const cmd = JSON.parse(clean);
-
-    if (cmd.error) {
-      addLog('error', '❌ ' + cmd.error);
-      document.getElementById('voiceStatus').textContent = '❌ Không nhận ra lệnh';
-      speak("Tôi không hiểu câu lệnh này.");
-    } else {
-      let executedCount = 0;
-      let delayMs = 0;
-
-      if (cmd.commands && Array.isArray(cmd.commands)) {
-        cmd.commands.forEach(c => {
-          if (c.device && c.action) {
-            setTimeout(() => {
-              const msg = getActionText(c.device, c.action);
-              addLog('action', '🔧 ' + msg);
-              sendCommand(c.device, c.action);
-            }, delayMs);
-            delayMs += 250;
-            executedCount++;
-          }
-        });
-      }
-
-      // Xử lý phản hồi giọng nói (TTS)
-      let speakText = cmd.speak;
-      let speakLang = cmd.lang || 'vi-VN';
-      if (speakText) {
-        if (speakText === 'temp_humi') {
-          speakLang = 'vi-VN';
-          if (currentTemp !== null && currentHumi !== null) {
-            speakText = `Nhiệt độ trong nhà hiện tại là ${currentTemp} độ C, và độ ẩm là ${currentHumi} phần trăm.`;
-          } else {
-            speakText = "Hiện tại tôi chưa nhận được dữ liệu cảm biến từ thiết bị.";
-          }
-        }
-        addLog('ai', '🗣️ [' + speakLang + '] ' + speakText);
-        speak(speakText, speakLang);
-        document.getElementById('voiceStatus').textContent = speakText;
+    if (data.error) {
+      // Nếu model bận → fallback sang 8b-instant
+      if (data.error.code === 'model_not_available' || data.error.code === 'rate_limit_exceeded') {
+        addLog('action', '⚠️ 70B bận, fallback sang 8B...');
+        await processWithFallbackModel(text, messages);
       } else {
-        if (executedCount > 0) {
-          document.getElementById('voiceStatus').textContent = `✅ Đã gửi ${executedCount} lệnh`;
-        }
+        addLog('error', '❌ API: ' + data.error.message);
         if (isConversationActive) startSilenceTimer();
       }
+      return;
     }
+
+    const raw = data.choices?.[0]?.message?.content?.trim();
+    if (!raw) {
+      addLog('error', '❌ Groq không trả về nội dung.');
+      conversationHistory.pop(); // Xóa user message thất bại
+      if (isConversationActive) startSilenceTimer();
+      return;
+    }
+
+    handleGroqResponse(raw, text);
+
   } catch(err) {
-    clearTimeout(timeoutId);
-    if (err.name === 'AbortError') {
-      addLog('error', '❌ Lỗi: Kết nối tới AI API bị quá thời gian (7 giây). Kiểm tra mạng hoặc bật/tắt VPN (1.1.1.1).');
-      document.getElementById('voiceStatus').textContent = '❌ Lỗi kết nối (Timeout)';
-      speak("Không kết nối được trợ lý ảo, vui lòng kiểm tra mạng hoặc VPN.");
-    } else {
-      addLog('error', '❌ Lỗi: ' + err.message);
-      document.getElementById('voiceStatus').textContent = '❌ Lỗi xử lý';
+    addLog('error', '❌ ' + err.message);
+    document.getElementById('voiceStatus').textContent = '❌ Lỗi kết nối';
+    conversationHistory.pop(); // Xóa user message thất bại
+    if (isConversationActive) startSilenceTimer();
+  }
+}
+
+// Fallback sang model nhỏ hơn nếu 70B không khả dụng
+async function processWithFallbackModel(text, messages) {
+  const apiKey = localStorage.getItem('sh_groqkey');
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: messages,
+        temperature: 0.3,
+        max_tokens: 512,
+        response_format: { type: 'json_object' }
+      })
+    });
+    const data = await res.json();
+    if (data.error) { addLog('error', '❌ Fallback lỗi: ' + data.error.message); if (isConversationActive) startSilenceTimer(); return; }
+    const raw = data.choices?.[0]?.message?.content?.trim();
+    if (raw) handleGroqResponse(raw, text);
+  } catch(e) {
+    addLog('error', '❌ ' + e.message);
+    if (isConversationActive) startSilenceTimer();
+  }
+}
+
+// Xử lý JSON response từ Groq — dùng chung cho cả 2 model
+function handleGroqResponse(raw, originalText) {
+  try {
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const cmd = JSON.parse(clean);
+
+    // Lưu assistant response vào lịch sử
+    addToHistory('assistant', raw);
+
+    let executedCount = 0;
+    let delayMs = 0;
+
+    if (cmd.commands && Array.isArray(cmd.commands)) {
+      cmd.commands.forEach(c => {
+        if (c.device && c.action) {
+          setTimeout(() => {
+            addLog('action', '⚡ ' + getActionText(c.device, c.action));
+            sendCommand(c.device, c.action);
+          }, delayMs);
+          delayMs += 250;
+          executedCount++;
+        }
+      });
     }
+
+    // TTS response
+    let speakText = cmd.speak || '';
+    let speakLang = cmd.lang || 'vi-VN';
+
+    if (speakText === 'temp_humi') {
+      speakLang = 'vi-VN';
+      speakText = (currentTemp !== null && currentHumi !== null)
+        ? `Nhiệt độ trong nhà hiện tại là ${currentTemp} độ C, độ ẩm ${currentHumi} phần trăm.`
+        : 'Hiện tôi chưa nhận được dữ liệu cảm biến từ thiết bị.';
+    }
+
+    if (speakText) {
+      addLog('ai', '🤖 [' + speakLang + '] ' + speakText);
+      speak(speakText, speakLang);
+      document.getElementById('voiceStatus').textContent = speakText.slice(0, 80) + (speakText.length > 80 ? '…' : '');
+    } else {
+      if (executedCount > 0) document.getElementById('voiceStatus').textContent = `✅ Đã gửi ${executedCount} lệnh`;
+      if (isConversationActive) startSilenceTimer();
+    }
+
+  } catch(parseErr) {
+    addLog('error', '❌ Không parse được JSON: ' + raw.slice(0, 80));
+    // Nếu parse JSON thất bại nhưng có text → đọc thẳng lên
+    speak('Xin lỗi, tôi gặp sự cố xử lý. Bạn thử lại nhé.', 'vi-VN');
     if (isConversationActive) startSilenceTimer();
   }
 }
@@ -1341,66 +1365,30 @@ function speak(text, langCode = 'vi-VN') {
     if (isConversationActive) startSilenceTimer();
     return;
   }
-  
-  // Hủy âm thanh đang phát và dọn dẹp các bộ hẹn giờ trước đó
   window.speechSynthesis.cancel();
-  if (activeSpeechTimeout) {
-    clearTimeout(activeSpeechTimeout);
-    activeSpeechTimeout = null;
-  }
 
-  let cleanText = text;
-  // Chuẩn hóa văn bản đối với Tiếng Việt
+  let cleanText = stripMarkdownAndEmoji(text);
   if (langCode.startsWith('vi')) {
-    cleanText = text
-      .replace(/°\s*C/gi, ' độ C')
-      .replace(/độ\s*C/gi, 'độ xê')
-      .replace(/°\s*F/gi, ' độ F')
-      .replace(/độ\s*F/gi, 'độ ép')
-      .replace(/°/g, ' độ ')
-      .replace(/%/g, ' phần trăm')
-      .replace(/km\/h/gi, 'ki lô mét trên giờ')
-      .replace(/m\/s/gi, 'mét trên giây')
-      .replace(/m2|m²/gi, 'mét vuông')
-      .replace(/kg/gi, 'ki lô gam')
-      .replace(/&/g, ' và ')
-      .replace(/@/g, ' a còng ')
-      .replace(/\+/g, ' cộng ')
-      .replace(/(\d)\s*-\s*(\d)/g, '$1 đến $2')
-      .replace(/\.\.\./g, ', ')
-      .replace(/(đèn|quạt|cửa) 1/gi, '$1 một')
-      .replace(/(đèn|quạt|cửa) 2/gi, '$1 hai')
-      // Phiên âm từ tiếng Anh thông dụng sang tiếng Việt để giọng đọc vi-VN không bị ngọng
-      .replace(/jarvis/gi, 'Gia vít')
-      .replace(/api/gi, 'A P I')
-      .replace(/groq/gi, 'Gờ rốc')
-      .replace(/llama/gi, 'La ma')
-      .replace(/mqtt/gi, 'Mờ Quy Tê Tê')
-      .replace(/hivemq/gi, 'Hai vờ Mờ Quy')
-      .replace(/smart\s*home/gi, 'Nhà thông minh')
-      .replace(/smart/gi, 'thông minh')
-      .replace(/on/gi, 'bật')
-      .replace(/off/gi, 'tắt')
-      .replace(/led/gi, 'lét')
-      .replace(/esp32/gi, 'E ét pê ba hai')
-      .replace(/esp/gi, 'E ét pê')
-      .replace(/wifi/gi, 'Quai phai')
-      .replace(/wi-fi/gi, 'Quai phai');
+    cleanText = normalizeSymbolsVi(cleanText);
   } else {
-    cleanText = cleanText.replace(/°\s*C/gi, ' degrees C').replace(/°\s*F/gi, ' degrees F').replace(/%/g, ' percent');
+    // Với ngôn ngữ khác vẫn nên đọc được các ký hiệu phổ biến thay vì bỏ qua
+    cleanText = cleanText.replace(/°\s*C\b/gi, ' degrees C').replace(/°\s*F\b/gi, ' degrees F').replace(/%/g, ' percent');
   }
 
-  // Tạo đối tượng Utterance và lưu vào biến toàn cục để tránh bị Garbage Collection
-  activeUtterance = new SpeechSynthesisUtterance(cleanText);
-  activeUtterance.lang = langCode;
-  activeUtterance.rate = langCode.startsWith('vi') ? 1.05 : 1.0;
-  activeUtterance.pitch = 1.0;
-  activeUtterance.volume = 1.0;
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  utterance.lang = langCode;
+  
+  // Tăng nhẹ tốc độ đọc đối với tiếng Việt
+  utterance.rate = langCode.startsWith('vi') ? 1.05 : 1.0;
+  utterance.pitch = 1.0;
+  utterance.volume = 1.0;
 
   const voices = window.speechSynthesis.getVoices();
   const langPrefix = langCode.split('-')[0].toLowerCase();
   
   let targetVoice = null;
+
+  // 1. Kiểm tra lựa chọn thủ công từ localStorage
   const savedViVoice = localStorage.getItem('sh_vi_voice');
   const savedEnVoice = localStorage.getItem('sh_en_voice');
 
@@ -1410,51 +1398,37 @@ function speak(text, langCode = 'vi-VN') {
     targetVoice = voices.find(v => v.name === savedEnVoice);
   }
 
+  // 2. Nếu không chọn thủ công hoặc giọng thủ công không khả dụng, chấm điểm chất lượng
+  //    và tự động chọn giọng tốt nhất hiện có (ưu tiên giọng online/cloud).
   if (!targetVoice) {
     const matchedVoices = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
     targetVoice = pickBestVoice(matchedVoices);
   }
   
   if (targetVoice) {
-    activeUtterance.voice = targetVoice;
+    utterance.voice = targetVoice;
     console.log('Selected Voice:', targetVoice.name, '(' + langCode + ')', 'score:', scoreVoice(targetVoice));
   }
 
-  // Sử dụng setTimeout 250ms để giải quyết triệt để lỗi bất đồng bộ race condition của Chrome
-  activeSpeechTimeout = setTimeout(() => {
-    if (!isConversationActive) {
-      window.speechSynthesis.speak(activeUtterance);
-      return;
-    }
-
+  if (isConversationActive) {
     setLiveState('SPEAKING');
-    
-    // Watchdog safety timer phòng trường hợp onend không kích hoạt do lỗi hệ thống TTS của Chrome
-    let watchdogTimer = setTimeout(() => {
-      console.warn('Watchdog kích hoạt: TTS kết thúc chậm hoặc bị đơ.');
-      if (isConversationActive && liveState === 'SPEAKING') {
-        startSilenceTimer();
-      }
-    }, Math.max(4000, cleanText.length * 100 + 2000)); // 100ms mỗi ký tự + 2s dự phòng
 
-    activeUtterance.onend = () => {
-      clearTimeout(watchdogTimer);
-      console.log('AI đã nói xong, bắt đầu chờ 5s');
+    utterance.onend = () => {
+      console.log('AI nói xong, bắt đầu chờ 5s');
       if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING') {
         startSilenceTimer();
       }
     };
 
-    activeUtterance.onerror = (e) => {
-      clearTimeout(watchdogTimer);
+    utterance.onerror = (e) => {
       console.warn('Lỗi phát âm thanh:', e);
       if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING' && e.error !== 'interrupted') {
         startSilenceTimer();
       }
     };
+  }
 
-    window.speechSynthesis.speak(activeUtterance);
-  }, 250);
+  window.speechSynthesis.speak(utterance);
 }
 
 // Đọc thử một câu mẫu chứa các ký tự/đơn vị hay bị đọc sai, để người dùng nghe và
@@ -1709,6 +1683,12 @@ window.onload = () => {
   renderWhitelist();
   renderBlacklist();
   renderLogs();
+
+  // Khôi phục STT language selection
+  const savedSttLang = localStorage.getItem('sh_stt_lang') || '';
+  sttLang = savedSttLang;
+  const sttSelect = document.getElementById('sttLangSelect');
+  if (sttSelect) sttSelect.value = savedSttLang;
   // Khắc phục lỗi nạp danh sách giọng nói trễ hoặc không kích hoạt sự kiện trên Safari iOS
   if (window.speechSynthesis) {
     const showVoices = () => {
@@ -1730,19 +1710,8 @@ window.onload = () => {
     setTimeout(showVoices, 1000);
   }
 
-  const savedProvider = localStorage.getItem('sh_ai_provider') || 'groq';
-  const savedModel = localStorage.getItem('sh_ai_model') || 'llama-3.3-70b-versatile';
-  const savedSttLang = localStorage.getItem('sh_stt_lang') || 'vi-VN';
   const k = localStorage.getItem('sh_groqkey') || '';
   const p = localStorage.getItem('sh_mqttpass') || '';
-  
-  document.getElementById('aiProvider').value = savedProvider;
-  onProviderChange();
-  
-  if (savedModel) {
-    document.getElementById('aiModel').value = savedModel;
-  }
-  document.getElementById('sttLang').value = savedSttLang;
   document.getElementById('apiKey').value = k;
   document.getElementById('mqttPass').value = p;
   
