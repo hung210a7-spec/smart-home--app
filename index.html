@@ -642,6 +642,9 @@ let isConversationActive = false; // Trạng thái cuộc gọi thoại có đan
 let liveState = 'IDLE'; // Trạng thái hiện tại: IDLE, LISTENING, USER_SPEAKING, PROCESSING, SPEAKING, WAITING
 let silenceTimer = null;
 let recognitionRestartTimer = null;
+let conversationHistory = [];
+let activeUtterance = null;
+let activeSpeechTimeout = null;
 let audioCtx = null;
 
 // Hàm tạo âm thanh bíp thông minh trực tiếp từ trình duyệt
@@ -926,13 +929,21 @@ function startSilenceTimer() {
 
 // Xử lý gửi văn bản giọng nói lên API Groq
 async function processLiveSpeech(text) {
-  addLog('user', '🎙️ "' + text + '"');
+  addLog('user', '💬 "' + text + '"');
   const apiKey = localStorage.getItem('sh_groqkey');
-  const prompt = `Bạn là trợ lý ảo nhà thông minh tên Jarvis. Bạn có 2 nhiệm vụ:
-1. Nhận diện và thực thi điều khiển thiết bị thông minh khi được yêu cầu.
-2. Trả lời các câu hỏi trò chuyện, kiến thức thông thường của người dùng một cách đầy đủ, thông minh, chi tiết và thân thiện bằng CHÍNH NGÔN NGỮ mà người dùng đang giao tiếp (hỗ trợ cả Tiếng Việt, Tiếng Anh, Tiếng Nhật, v.v.).
+  
+  if (!apiKey || apiKey.trim() === '') {
+    addLog('error', '❌ Lỗi: Chưa cấu hình Groq API Key trong tab Cấu hình!');
+    document.getElementById('voiceStatus').textContent = '❌ Chưa cấu hình API Key';
+    if (isConversationActive) startSilenceTimer();
+    return;
+  }
 
-Thiết bị hợp lệ: light1 (đèn 1), light2 (đèn 2), fan (quạt), door (cửa), lcd_tab (màn hình hiển thị LCD, hành động là "1" - màn hình chính/màn chờ, "2" - màn hình cảm biến, "3" - màn hình lời nhắc), all (tất cả).
+  const promptSystem = `Bạn là trợ lý ảo nhà thông minh tên Jarvis. Bạn có 2 nhiệm vụ:
+1. Nhận diện và thực thi điều khiển thiết bị thông minh khi được yêu cầu.
+2. Trả lời các câu hỏi trò chuyện, kiến thức thông thường của người dùng một cách đầy đủ, thông minh, chi tiết và thân thiện bằng CHÍNH NGôn ngữ mà người dùng đang giao tiếp.
+
+Thiết bị hợp lệ: light1 (đèn 1), light2 (đèn 2), fan (quạt), door (cửa), lcd_tab (màn hình hiển thị LCD, hành động là "1" - màn hình chính/màn chủ, "2" - màn hình cảm biến, "3" - màn hình lời nhắc), all (tất cả).
 Hành động hợp lệ: "on" (bật/mở), "off" (tắt/đóng/khóa) hoặc "1", "2", "3" (dành riêng cho lcd_tab).
 
 Yêu cầu trả về JSON định dạng sau (không giải thích hay thêm văn bản khác ngoài JSON):
@@ -941,44 +952,52 @@ Yêu cầu trả về JSON định dạng sau (không giải thích hay thêm v�
     { "device": "tên_thiết_bị", "action": "hành_động" }
   ],
   "speak": "câu_trả_lời_hoặc_câu_nói_phản_hồi",
-  "lang": "mã_ngôn_ngữ_bcp47"
+  "lang": "ma_ngôn_ngữ_bcp47"
 }
 
 Quy tắc:
 - Khi người dùng ra lệnh điều khiển: Tạo danh sách lệnh trong "commands" và phản hồi xác nhận trong "speak" bằng ngôn ngữ phù hợp.
 - Khi hỏi về nhiệt độ, độ ẩm, thời tiết trong nhà: Đặt "commands" là [{"device": "lcd_tab", "action": "2"}] và "speak" là "temp_humi". Trường "lang" đặt là "vi-VN".
 - Khi người dùng yêu cầu chuyển màn hình, đổi tab LCD: Đặt lệnh tương ứng của "lcd_tab" vào "commands".
-- Khi người dùng trò chuyện, hỏi thông tin: Trả lời họ trực tiếp vào trường "speak" một cách thông minh, chi tiết bằng chính ngôn ngữ họ dùng, đồng thời ghi mã ngôn ngữ BCP-47 tương ứng vào trường "lang" (Ví dụ: "en-US" cho tiếng Anh, "vi-VN" cho tiếng Việt, "ja-JP" cho tiếng Nhật, "zh-CN" cho tiếng Trung).
-- Hỗ trợ sửa lỗi chính tả phát âm tiếng Việt (Ví dụ: "bặt", "bặc", "mở" -> "on"; "tát", "tắc", "khóa" -> "off").
+- Khi người dùng trò chuyện, hỏi thông tin: Trả lời trực tiếp vào trường "speak" một cách thông minh, chi tiết bằng chính ngôn ngữ họ dùng, đồng thời ghi mã ngôn ngữ BCP-47 tương ứng vào trường "lang" (Ví dụ: "en-US" cho tiếng Anh, "vi-VN" cho tiếng Việt).
+- Hỗ trợ sửa lỗi chính tả phát âm tiếng Việt (Ví dụ: "bật", "bậc", "mở" -> "on"; "tắt", "tặc", "khóa" -> "off").`;
 
-Ví dụ suy luận:
-- "bạn tên là gì" → {"commands": [], "speak": "Tôi là Jarvis, trợ lý thông minh của bạn.", "lang": "vi-VN"}
-- "what is your name" → {"commands": [], "speak": "My name is Jarvis, your smart home assistant.", "lang": "en-US"}
-- "bặt đèn 2 tắt đèn 1" → {"commands": [{"device":"light2","action":"on"}, {"device":"light1","action":"off"}], "speak": "Đã bật đèn hai và tắt đèn một", "lang": "vi-VN"}
-- "nhiệt độ phòng thế nào" → {"commands": [{"device":"lcd_tab","action":"2"}], "speak": "temp_humi", "lang": "vi-VN"}
-- "về màn hình chính" → {"commands": [{"device":"lcd_tab","action":"1"}], "speak": "Đã quay về màn hình chính", "lang": "vi-VN"}
-- "chuyển sang màn hình cảm biến" → {"commands": [{"device":"lcd_tab","action":"2"}], "speak": "Đã chuyển sang màn hình cảm biến", "lang": "vi-VN"}
-- "hiển thị lời nhắc" → {"commands": [{"device":"lcd_tab","action":"3"}], "speak": "Đã chuyển sang màn hình lời nhắc", "lang": "vi-VN"}
+  // Thêm câu nói của người dùng vào lịch sử ngữ cảnh
+  conversationHistory.push({ role: 'user', content: text });
+  if (conversationHistory.length > 20) {
+    conversationHistory.shift();
+  }
+  updateClearContextButton();
 
-Câu nói của người dùng: "${text}"`;
+  // Xây dựng danh sách tin nhắn gửi lên API
+  const messages = [
+    { role: 'system', content: promptSystem },
+    ...conversationHistory
+  ];
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s timeout
 
   try {
     const res = await fetch(
       'https://api.groq.com/openai/v1/chat/completions',
       {
         method: 'POST',
+        signal: controller.signal,
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + apiKey
         },
         body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [{ role: 'user', content: prompt }],
+          model: 'llama-3.3-70b-versatile',
+          messages: messages,
           temperature: 0.1,
           response_format: { type: "json_object" }
         })
       }
     );
+    clearTimeout(timeoutId);
+    
     const data = await res.json();
     console.log('Groq raw:', JSON.stringify(data));
 
@@ -996,12 +1015,19 @@ Câu nói của người dùng: "${text}"`;
       return;
     }
 
+    // Thêm phản hồi của trợ lý vào lịch sử ngữ cảnh
+    conversationHistory.push({ role: 'assistant', content: raw });
+    if (conversationHistory.length > 20) {
+      conversationHistory.shift();
+    }
+    updateClearContextButton();
+
     const clean = raw.replace(/```json|```/g, '').trim();
     const cmd = JSON.parse(clean);
 
     if (cmd.error) {
-      addLog('error', '❓ ' + cmd.error);
-      document.getElementById('voiceStatus').textContent = '❓ Không nhận ra lệnh';
+      addLog('error', '❌ ' + cmd.error);
+      document.getElementById('voiceStatus').textContent = '❌ Không nhận ra lệnh';
       speak("Tôi không hiểu câu lệnh này.");
     } else {
       let executedCount = 0;
@@ -1012,7 +1038,7 @@ Câu nói của người dùng: "${text}"`;
           if (c.device && c.action) {
             setTimeout(() => {
               const msg = getActionText(c.device, c.action);
-              addLog('action', '⚡ ' + msg);
+              addLog('action', '🔧 ' + msg);
               sendCommand(c.device, c.action);
             }, delayMs);
             delayMs += 250;
@@ -1044,8 +1070,15 @@ Câu nói của người dùng: "${text}"`;
       }
     }
   } catch(err) {
-    addLog('error', '❌ ' + err.message);
-    document.getElementById('voiceStatus').textContent = '❌ Lỗi xử lý';
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      addLog('error', '❌ Lỗi: Kết nối tới Groq API bị quá thời gian (7 giây). Kiểm tra mạng hoặc bật/tắt VPN (1.1.1.1).');
+      document.getElementById('voiceStatus').textContent = '❌ Lỗi kết nối (Timeout)';
+      speak("Không kết nối được trợ lý ảo, vui lòng kiểm tra mạng hoặc VPN.");
+    } else {
+      addLog('error', '❌ Lỗi: ' + err.message);
+      document.getElementById('voiceStatus').textContent = '❌ Lỗi xử lý';
+    }
     if (isConversationActive) startSilenceTimer();
   }
 }
@@ -1199,8 +1232,9 @@ function renderWhitelist() {
   tbody.innerHTML = '';
   if (rfidWhitelist.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666;">Chua co the nao duoc dang ky</td></tr>'; return; }
   rfidWhitelist.forEach(card => {
+    const isBlocked = card.blocked === true;
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><code>${card.uid}</code></td><td>${card.name}</td><td><span class="badge allowed">Cho phep</span></td><td><button class="btn-danger" onclick="deleteCard('${card.uid}')">Xoa</button></td>`;
+    tr.innerHTML = `<td><code>${card.uid}</code></td><td>${card.name}</td><td><span class="badge ${isBlocked ? 'denied' : 'allowed'}" style="cursor:pointer;" onclick="toggleBlockCard('${card.uid}')">${isBlocked ? 'Bi cam' : 'Cho phep'}</span></td><td><button class="btn-danger" onclick="deleteCard('${card.uid}')">Xoa</button></td>`;
     tbody.appendChild(tr);
   });
 }
@@ -1224,7 +1258,7 @@ function addNewCard() {
   const name = removeVietnameseTones(nameInput.value.trim());
   if (!uid || !name) { alert('Vui long nhap day du Ma the UID va Ten chu the!'); return; }
   if (rfidWhitelist.some(c => c.uid === uid)) { alert('Ma the UID nay da duoc dang ky!'); return; }
-  rfidWhitelist.push({ uid, name }); saveWhitelist();
+  rfidWhitelist.push({ uid, name, blocked: false }); saveWhitelist();
   uidInput.value = ''; nameInput.value = '';
   addLog('action', 'Dang ky the moi: ' + name + ' (' + uid + ')');
 }
@@ -1237,7 +1271,1446 @@ function deleteCard(uid) {
 
 function syncWhitelistToEsp32() {
   if (!mqttClient || !mqttClient.connected) return;
-  const uids = rfidWhitelist.map(c => c.uid).join(',') + (rfidWhitelist.length > 0 ? ',' : '');
+  const allowedCards = rfidWhitelist.filter(c => !c.blocked);
+  const uids = allowedCards.map(c => c.uid).join(',') + (allowedCards.length > 0 ? ',' : '');
+  mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'rfid_sync', action: uids }), { qos: 1 });
+}
+
+function removeVietnameseTones(str) {
+  str = str.replace(/[Ã Ã¡áº¡áº£Ã£Ã¢áº§áº¥áº­áº©áº«Äƒáº±áº¯áº·áº³áºµ]/g,"a").replace(/[Ã¨Ã©áº¹áº»áº½Ãªá»áº¿á»‡á»ƒá»…]/g,"e")
+    .replace(/[Ã¬Ã­á»‹á»‰Ä©]/g,"i").replace(/[Ã²Ã³á»á»ÃµÃ´á»“á»‘á»™á»•á»—Æ¡á»á»›á»£á»Ÿá»¡]/g,"o")
+    .replace(/[Ã¹Ãºá»¥á»§Å©Æ°á»«á»©á»±á»­á»¯]/g,"u").replace(/[á»³Ã½á»µá»·á»¹]/g,"y").replace(/Ä‘/g,"d")
+    .replace(/[Ã€Ãáº áº¢ÃƒÃ‚áº¦áº¤áº¬áº¨áºªÄ‚áº°áº®áº¶áº²áº´]/g,"A").replace(/[ÃˆÃ‰áº¸áººáº¼ÃŠá»€áº¾á»†á»‚á»„]/g,"E")
+    .replace(/[ÃŒÃá»Šá»ˆÄ¨]/g,"I").replace(/[Ã’Ã“á»Œá»ŽÃ•Ã”á»’á»á»˜á»”á»–Æ á»œá»šá»¢á»žá» ]/g,"O")
+    .replace(/[Ã™Ãšá»¤á»¦Å¨Æ¯á»ªá»¨á»°á»¬á»®]/g,"U").replace(/[á»²Ãá»´á»¶á»¸]/g,"Y").replace(/Ä/g,"D");
+  return str.trim();
+}
+
+function sendReminder() {
+  const input = document.getElementById('reminderInput');
+  const text = removeVietnameseTones(input.value.trim());
+  if (!text) { alert('Vui long nhap loi nhac!'); return; }
+  sendCommand('reminder', text);
+  addLog('action', 'Da gui loi nhac len LCD: "' + text + '"');
+  input.value = '';
+}
+
+window.onload = () => {
+  renderWhitelist(); renderLogs();
+  if (window.speechSynthesis) {
+    const showVoices = () => {
+      const list = window.speechSynthesis.getVoices();
+      if (list && list.length > 0) {
+        populateVoiceSelectors();
+        const viNames = list.filter(v => v.lang.toLowerCase().replace('_','-').startsWith('vi')).map(v => v.name);
+        if (viNames.length > 0 && !window.hasLoggedVoices) { window.hasLoggedVoices = true; addLog('action', 'Giong Viet tim thay: ' + viNames.join(', ')); }
+      }
+    };
+    showVoices(); window.speechSynthesis.onvoiceschanged = showVoices;
+    setTimeout(showVoices, 300); setTimeout(showVoices, 1000);
+  }
+  const k = localStorage.getItem('sh_groqkey') || '';
+  const p = localStorage.getItem('sh_mqttpass') || '';
+  document.getElementById('apiKey').value = k;
+  document.getElementById('mqttPass').value = p;
+  if (k && p) setTimeout(connect, 500);
+};
+</script>
+</body>
+</htmlfunction speak(text, langCode = 'vi-VN') {
+  if (!window.speechSynthesis || !text) {
+    if (isConversationActive) startSilenceTimer();
+    return;
+  }
+  
+  // Hủy âm thanh đang phát và dọn dẹp các bộ hẹn giờ trước đó
+  window.speechSynthesis.cancel();
+  if (activeSpeechTimeout) {
+    clearTimeout(activeSpeechTimeout);
+    activeSpeechTimeout = null;
+  }
+
+  let cleanText = text;
+  // Chuẩn hóa văn bản đối với Tiếng Việt
+  if (langCode.startsWith('vi')) {
+    cleanText = text
+      .replace(/°\s*C/gi, ' độ C')
+      .replace(/độ\s*C/gi, 'độ xê')
+      .replace(/°\s*F/gi, ' độ F')
+      .replace(/độ\s*F/gi, 'độ ép')
+      .replace(/°/g, ' độ ')
+      .replace(/%/g, ' phần trăm')
+      .replace(/km\/h/gi, 'ki lô mét trên giờ')
+      .replace(/m\/s/gi, 'mét trên giây')
+      .replace(/m2|m²/gi, 'mét vuông')
+      .replace(/kg/gi, 'ki lô gam')
+      .replace(/&/g, ' và ')
+      .replace(/@/g, ' a còng ')
+      .replace(/\+/g, ' cộng ')
+      .replace(/(\d)\s*-\s*(\d)/g, '$1 đến $2')
+      .replace(/\.\.\./g, ', ')
+      .replace(/(đèn|quạt|cửa) 1/gi, '$1 một')
+      .replace(/(đèn|quạt|cửa) 2/gi, '$1 hai')
+      // Phiên âm từ tiếng Anh thông dụng sang tiếng Việt để giọng đọc vi-VN không bị ngọng
+      .replace(/jarvis/gi, 'Gia vít')
+      .replace(/api/gi, 'A P I')
+      .replace(/groq/gi, 'Gờ rốc')
+      .replace(/llama/gi, 'La ma')
+      .replace(/mqtt/gi, 'Mờ Quy Tê Tê')
+      .replace(/hivemq/gi, 'Hai vờ Mờ Quy')
+      .replace(/smart\s*home/gi, 'Nhà thông minh')
+      .replace(/smart/gi, 'thông minh')
+      .replace(/on/gi, 'bật')
+      .replace(/off/gi, 'tắt')
+      .replace(/led/gi, 'lét')
+      .replace(/esp32/gi, 'E ét pê ba hai')
+      .replace(/esp/gi, 'E ét pê')
+      .replace(/wifi/gi, 'Quai phai')
+      .replace(/wi-fi/gi, 'Quai phai');
+  } else {
+    cleanText = cleanText.replace(/°\s*C/gi, ' degrees C').replace(/°\s*F/gi, ' degrees F').replace(/%/g, ' percent');
+  }
+
+  // Tạo đối tượng Utterance và lưu vào biến toàn cục để tránh bị Garbage Collection
+  activeUtterance = new SpeechSynthesisUtterance(cleanText);
+  activeUtterance.lang = langCode;
+  activeUtterance.rate = langCode.startsWith('vi') ? 1.05 : 1.0;
+  activeUtterance.pitch = 1.0;
+  activeUtterance.volume = 1.0;
+
+  const voices = window.speechSynthesis.getVoices();
+  const langPrefix = langCode.split('-')[0].toLowerCase();
+  
+  let targetVoice = null;
+  const savedViVoice = localStorage.getItem('sh_vi_voice');
+  const savedEnVoice = localStorage.getItem('sh_en_voice');
+
+  if (langPrefix === 'vi' && savedViVoice) {
+    targetVoice = voices.find(v => v.name === savedViVoice);
+  } else if (langPrefix === 'en' && savedEnVoice) {
+    targetVoice = voices.find(v => v.name === savedEnVoice);
+  }
+
+  if (!targetVoice) {
+    const matchedVoices = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
+    targetVoice = pickBestVoice(matchedVoices);
+  }
+  
+  if (targetVoice) {
+    activeUtterance.voice = targetVoice;
+    console.log('Selected Voice:', targetVoice.name, '(' + langCode + ')');
+  }
+
+  // Sử dụng setTimeout 250ms để giải quyết triệt để lỗi bất đồng bộ race condition của Chrome
+  activeSpeechTimeout = setTimeout(() => {
+    if (!isConversationActive) {
+      window.speechSynthesis.speak(activeUtterance);
+      return;
+    }
+
+    setLiveState('SPEAKING');
+    
+    // Watchdog safety timer phòng trường hợp onend không kích hoạt do lỗi hệ thống TTS của Chrome
+    let watchdogTimer = setTimeout(() => {
+      console.warn('Watchdog kích hoạt: TTS kết thúc chậm hoặc bị đơ.');
+      if (isConversationActive && liveState === 'SPEAKING') {
+        startSilenceTimer();
+      }
+    }, Math.max(4000, cleanText.length * 100 + 2000)); // 100ms mỗi ký tự + 2s dự phòng
+
+    activeUtterance.onend = () => {
+      clearTimeout(watchdogTimer);
+      console.log('AI đã nói xong, bắt đầu chờ 5s');
+      if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING') {
+        startSilenceTimer();
+      }
+    };
+
+    activeUtterance.onerror = (e) => {
+      clearTimeout(watchdogTimer);
+      console.warn('Lỗi phát âm thanh:', e);
+      if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING' && e.error !== 'interrupted') {
+        startSilenceTimer();
+      }
+    };
+
+    window.speechSynthesis.speak(activeUtterance);
+  }, 250);
+}<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Home AI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.4/mqtt.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at top right, #1b1035, #080810);
+  color: #e2e8f0;
+  min-height: 100vh;
+  padding-bottom: 40px;
+  overflow-x: hidden;
+}
+.header {
+  background: transparent;
+  padding: 30px 20px 10px;
+  text-align: center;
+}
+.header h1 {
+  font-size: 1.8em;
+  font-weight: 800;
+  background: linear-gradient(90deg, #a78bfa, #3b82f6, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.8em;
+  color: #94a3b8;
+}
+.dot { width:10px; height:10px; border-radius:50%; background:#475569; transition: all 0.3s; }
+.dot.green  { background:#10b981; box-shadow:0 0 10px #10b981; }
+.dot.yellow { background:#f59e0b; box-shadow:0 0 10px #f59e0b; }
+
+.setup-panel {
+  background: rgba(30, 30, 58, 0.4);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  margin: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.setup-panel h3 { font-size:0.9em; color:#a78bfa; margin-bottom:14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+.input-group { margin-bottom:12px; }
+.input-group label { font-size:0.75em; color:#94a3b8; display:block; margin-bottom:6px; font-weight: 500; }
+.input-group input, .input-group select {
+  width:100%;
+  background: rgba(15, 15, 30, 0.6);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color:#f1f5f9;
+  font-size:0.9em;
+  outline:none;
+  transition: all 0.3s;
+}
+.input-group input:focus, .input-group select:focus {
+  border-color:#8b5cf6;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.25);
+}
+.btn-connect {
+  width:100%;
+  padding:12px;
+  background: linear-gradient(90deg, #8b5cf6, #3b82f6);
+  border:none;
+  border-radius:12px;
+  color:white;
+  font-size:0.95em;
+  font-weight:700;
+  cursor:pointer;
+  margin-top:6px;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+}
+.btn-connect:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+}
+
+.voice-section { text-align:center; padding:24px 16px 10px; }
+
+/* Mic Button States */
+.mic-btn {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  font-size: 2.5em;
+  cursor: pointer;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+  position: relative;
+  outline: none;
+  color: white;
+}
+.mic-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 25px rgba(124, 58, 237, 0.5);
+}
+.mic-btn:disabled { background:#2a2a40; box-shadow:none; cursor:not-allowed; opacity: 0.6; }
+
+/* Pulsating purple for listening */
+.mic-btn.state-listening {
+  background: linear-gradient(135deg, #a78bfa, #3b82f6);
+  animation: pulse-purple 1.5s infinite;
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
+}
+@keyframes pulse-purple {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7); }
+  70% { transform: scale(1.04); box-shadow: 0 0 0 15px rgba(139, 92, 246, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+}
+
+/* Fast pulsating pink for user speaking */
+.mic-btn.state-user-speaking {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  animation: pulse-pink 0.8s infinite;
+  box-shadow: 0 0 35px rgba(236, 72, 153, 0.7);
+}
+@keyframes pulse-pink {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.8); }
+  50% { transform: scale(1.06); box-shadow: 0 0 0 10px rgba(236, 72, 153, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+}
+
+/* Rotating orange for processing */
+.mic-btn.state-processing {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  animation: pulse-orange 1.2s infinite;
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.6);
+}
+@keyframes pulse-orange {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  70% { transform: scale(1.03); box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+/* Pulsating green for AI speaking */
+.mic-btn.state-speaking {
+  background: linear-gradient(135deg, #10b981, #06b6d4);
+  animation: pulse-green 1.4s infinite;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.6);
+}
+@keyframes pulse-green {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1.04); box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Pulsating warning yellow for waiting timeout */
+.mic-btn.state-waiting {
+  background: linear-gradient(135deg, #eab308, #f97316);
+  animation: pulse-yellow 1s infinite;
+  box-shadow: 0 0 25px rgba(234, 179, 8, 0.5);
+}
+@keyframes pulse-yellow {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.6); }
+  70% { transform: scale(1.04); box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+}
+
+.voice-hint { font-size:0.85em; color:#94a3b8; margin-bottom:8px; font-weight: 500; }
+.voice-status { font-size:0.95em; color:#a78bfa; min-height:28px; margin-bottom:12px; font-weight: 600; padding: 0 20px; text-align: center; }
+
+.chat-log {
+  background: rgba(15, 15, 30, 0.5);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  border-radius: 18px;
+  margin: 0 16px 16px;
+  padding: 16px;
+  min-height: 140px;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+}
+.chat-msg { font-size:0.85em; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); line-height:1.6; }
+.chat-msg:last-child { border-bottom:none; }
+.chat-msg .time { color:#64748b; font-size:0.85em; margin-right:8px; font-weight: 500; }
+.chat-msg .user   { color:#60a5fa; font-weight: 600; }
+.chat-msg .ai     { color:#34d399; font-weight: 600; }
+.chat-msg .action { color:#c084fc; font-weight: 500; }
+.chat-msg .error  { color:#f87171; font-weight: 500; }
+
+.device-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin:0 16px;
+}
+.device-card {
+  background: linear-gradient(135deg, rgba(30, 30, 58, 0.6), rgba(15, 15, 30, 0.7));
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: 18px;
+  padding: 20px 16px;
+  text-align: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+.device-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.2);
+}
+.device-card.on {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.25));
+  border-color: #8b5cf6;
+  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.35);
+}
+.device-card .icon { font-size:2.2em; margin-bottom:10px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.3)); }
+.device-card .name { font-size:0.9em; font-weight:700; margin-bottom:6px; letter-spacing: 0.5px; }
+.device-card .state {
+  font-size:0.75em; color:#94a3b8;
+  background: rgba(15, 15, 30, 0.8);
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+  font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.device-card.on .state { color:#c084fc; background:rgba(139, 92, 246, 0.2); border-color: rgba(139,92,246,0.3); }
+
+.commands-hint {
+  background: rgba(30, 30, 58, 0.3);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  border-radius: 18px;
+  margin: 16px 16px 0;
+  padding: 16px;
+}
+.commands-hint h3 { font-size:0.85em; color:#a78bfa; margin-bottom:10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.cmd { font-size:0.78em; color:#94a3b8; padding:3px 0; line-height: 1.5; }
+.cmd span { color:#f1f5f9; font-style:normal; font-weight: 500; }
+
+/* Tabbed Layout Styles */
+.tab-container {
+  display: flex;
+  background: rgba(15, 15, 30, 0.5);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: 14px;
+  margin: 16px 16px 8px;
+  padding: 4px;
+}
+.tab-button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 12px;
+  font-size: 0.9em;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  letter-spacing: 0.5px;
+}
+.tab-button.active {
+  background: linear-gradient(90deg, #8b5cf6, #3b82f6);
+  color: white;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+}
+.web-tab-content {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Form & Table Styles for RFID management */
+.panel-title {
+  font-size: 0.9em;
+  color: #7c3aed;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.flex-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.flex-row input {
+  flex: 1;
+  background: #0f0f1a;
+  border: 1px solid #2d2d5a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #e0e0e0;
+  font-size: 0.88em;
+  outline: none;
+}
+.flex-row input:focus {
+  border-color: #7c3aed;
+}
+.flex-row button {
+  background: linear-gradient(90deg, #7c3aed, #2563eb);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  padding: 8px 16px;
+  font-size: 0.88em;
+  font-weight: 600;
+  cursor: pointer;
+}
+.card-table-container {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+.card-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8em;
+  text-align: left;
+}
+.card-table th, .card-table td {
+  padding: 10px;
+  border-bottom: 1px solid #2d2d5a;
+}
+.card-table th {
+  color: #7c3aed;
+  font-weight: 600;
+}
+.card-table tr:hover {
+  background: rgba(255,255,255,0.02);
+}
+.btn-danger {
+  background: #ef4444;
+  border: none;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8em;
+}
+.btn-danger:hover {
+  background: #dc2626;
+}
+.badge {
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: bold;
+}
+.badge.allowed {
+  background: rgba(34,197,94,0.15);
+  color: #22c55e;
+}
+.badge.denied {
+  background: rgba(239,68,68,0.15);
+  color: #ef4444;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏠 SMART HOME AI</h1>
+  <div class="status-bar">
+    <div class="dot" id="mqttDot"></div>
+    <span id="mqttStatus">Chưa kết nối</span>
+  </div>
+</div>
+
+<!-- Tab Switcher -->
+<div class="tab-container">
+  <button class="tab-button active" id="btn-tab-control" onclick="switchWebTab('control')">🎛️ Điều khiển</button>
+  <button class="tab-button" id="btn-tab-rfid" onclick="switchWebTab('rfid')">🪪 Quản lý Thẻ</button>
+</div>
+
+<!-- Tab 1: Điều khiển & AI -->
+<div id="tab-control" class="web-tab-content">
+  <div class="setup-panel">
+    <h3>⚙️ Cấu hình</h3>
+    <div class="input-group">
+      <label>Groq API Key</label>
+      <input type="password" id="apiKey" placeholder="gsk_..." />
+    </div>
+    <div class="input-group">
+      <label>Mật khẩu HiveMQ</label>
+      <input type="password" id="mqttPass" placeholder="Mật khẩu HiveMQ của bạn" />
+    </div>
+    <div class="input-group">
+      <label>Giọng Tiếng Việt (Vietnamese Voice)</label>
+      <select id="viVoiceSelect" onchange="saveSelectedVoices()"></select>
+    </div>
+    <div class="input-group">
+      <label>Giọng Tiếng Anh (English Voice)</label>
+      <select id="enVoiceSelect" onchange="saveSelectedVoices()"></select>
+    </div>
+    <button class="btn-connect" onclick="connect()">🔌 Kết nối</button>
+  </div>
+
+  <div class="voice-section">
+    <p class="voice-hint">Nhấn mic và nói lệnh điều khiển</p>
+    <button class="mic-btn" id="micBtn" onclick="startVoice()" disabled>🎤</button>
+    <div class="voice-status" id="voiceStatus">Chưa kết nối MQTT</div>
+  </div>
+
+  <div class="chat-log" id="chatLog">
+    <div class="chat-msg"><span class="time">--:--</span><span class="ai">Nhật ký lệnh sẽ hiển thị ở đây...</span></div>
+  </div>
+
+  <div class="device-grid">
+    <div class="device-card" id="card-light1" onclick="manualToggle('light1')">
+      <div class="icon">💡</div>
+      <div class="name">Đèn 1</div>
+      <div class="state" id="state-light1">Tắt</div>
+    </div>
+    <div class="device-card" id="card-light2" onclick="manualToggle('light2')">
+      <div class="icon">💡</div>
+      <div class="name">Đèn 2</div>
+      <div class="state" id="state-light2">Tắt</div>
+    </div>
+    <div class="device-card" id="card-fan" onclick="manualToggle('fan')">
+      <div class="icon">🌀</div>
+      <div class="name">Quạt</div>
+      <div class="state" id="state-fan">Tắt</div>
+    </div>
+    <div class="device-card" id="card-door" onclick="manualToggle('door')">
+      <div class="icon">🚪</div>
+      <div class="name">Cửa</div>
+      <div class="state" id="state-door">Đóng</div>
+    </div>
+    <div class="device-card" style="cursor:default;">
+      <div class="icon">🌡️</div>
+      <div class="name">Cảm biến</div>
+      <div class="state" id="state-temp">-- °C / -- %</div>
+    </div>
+    <div class="device-card" style="cursor:default;" id="card-gas">
+      <div class="icon">⚠️</div>
+      <div class="name">Khí Gas</div>
+      <div class="state" id="state-gas">-- %</div>
+    </div>
+  </div>
+
+  <!-- Gửi lời nhắc lên LCD -->
+  <div class="setup-panel" style="margin-top: 16px;">
+    <div class="panel-title">📝 Gửi lời nhắc lên LCD 2004</div>
+    <div class="flex-row" style="margin-bottom:0;">
+      <input type="text" id="reminderInput" placeholder="Nhập lời nhắc không dấu (Ví dụ: mua sua, tat quat...)" />
+      <button onclick="sendReminder()">Gửi</button>
+    </div>
+  </div>
+
+  <div class="commands-hint">
+    <h3>📋 Lệnh mẫu</h3>
+    <div class="cmd">• <span>"trời nóng quá"</span> / <span>"oi bức thế"</span></div>
+    <div class="cmd">• <span>"bật đèn lên"</span> / <span>"tắt hết đi"</span></div>
+    <div class="cmd">• <span>"đi ngủ đây"</span> / <span>"về nhà rồi"</span></div>
+    <div class="cmd">• <span>"tối quá"</span> / <span>"chói mắt quá"</span></div>
+    <div class="cmd">• <span>"turn on the fan"</span> / <span>"lights off"</span></div>
+    <div class="cmd">• <span>"chuyển sang màn hình cảm biến"</span> / <span>"về màn hình chính"</span></div>
+  </div>
+</div>
+
+<!-- Tab 2: Quản lý Thẻ RFID & Lịch sử -->
+<div id="tab-rfid" class="web-tab-content" style="display:none;">
+  <div class="setup-panel">
+    <div class="panel-title">🪪 Đăng ký thẻ mới</div>
+    <div class="flex-row">
+      <input type="text" id="newCardUid" placeholder="Mã thẻ UID (Ví dụ: 1A2B3C4D)" />
+      <input type="text" id="newCardName" placeholder="Tên chủ thẻ (Ví dụ: Bo, Me, Quang)" />
+      <button onclick="addNewCard()">Thêm</button>
+    </div>
+    <p style="font-size:0.7em; color:#888;">* Quẹt thẻ lạ bất kỳ để tự động điền nhanh mã thẻ UID</p>
+  </div>
+  
+  <div class="setup-panel">
+    <div class="panel-title">📋 Danh sách thẻ đã đăng ký</div>
+    <div class="card-table-container">
+      <table class="card-table">
+        <thead>
+          <tr>
+            <th>Mã thẻ UID</th>
+            <th>Tên chủ thẻ</th>
+            <th>Quyền ra vào</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="rfidWhitelistBody">
+          <!-- Sẽ được điền động bằng JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="setup-panel">
+    <div class="panel-title">📜 Lịch sử ra vào cửa</div>
+    <div class="card-table-container">
+      <table class="card-table">
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Mã thẻ UID</th>
+            <th>Tên thẻ</th>
+            <th>Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody id="rfidLogsBody">
+          <!-- Sẽ được điền động bằng JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== CẤU HÌNH CỐ ĐỊNH =====
+const MQTT_HOST     = 'b5ce82cad41c4f209a7ecb3409f688c9.s1.eu.hivemq.cloud';
+const MQTT_PORT     = 8884;
+const MQTT_USER     = 'hung210a7';
+const MQTT_TOPIC    = 'smarthome/nhacuatoi/cmd';
+const MQTT_STATUS   = 'smarthome/nhacuatoi/status';
+// =============================
+
+let mqttClient = null;
+let isListening = false;
+let isProcessing = false;
+const deviceStates = { light1:false, light2:false, fan:false, door:false };
+let currentTemp = null;
+let currentHumi = null;
+
+function connect() {
+  const apiKey  = document.getElementById('apiKey').value.trim();
+  const mqttPass = document.getElementById('mqttPass').value.trim();
+  if (!apiKey)   { alert('Nhập Groq API Key!'); return; }
+  if (!mqttPass) { alert('Nhập mật khẩu HiveMQ!'); return; }
+
+  localStorage.setItem('sh_groqkey', apiKey);
+  localStorage.setItem('sh_mqttpass', mqttPass);
+  setStatus('Đang kết nối...', 'yellow');
+
+  if (mqttClient) { mqttClient.end(true); mqttClient = null; }
+
+  const clientId = 'webapp_' + Math.random().toString(16).slice(2,8);
+  mqttClient = mqtt.connect('wss://' + MQTT_HOST + ':' + MQTT_PORT + '/mqtt', {
+    clientId,
+    username: MQTT_USER,
+    password: mqttPass,
+    clean: true,
+    reconnectPeriod: 5000,
+  });
+
+  mqttClient.on('connect', () => {
+    setStatus('Đã kết nối ✓', 'green');
+    document.getElementById('micBtn').disabled = false;
+    document.getElementById('voiceStatus').textContent = 'Nhấn mic để ra lệnh';
+    mqttClient.subscribe(MQTT_STATUS);
+    addLog('ai', '✅ Kết nối HiveMQ Cloud thành công!');
+    // Tự động đồng bộ danh sách thẻ khi kết nối
+    syncWhitelistToEsp32();
+  });
+
+  mqttClient.on('message', (topic, message) => {
+    try {
+      const d = JSON.parse(message.toString());
+      if (d.light1 !== undefined) updateCard('light1', d.light1);
+      if (d.light2 !== undefined) updateCard('light2', d.light2);
+      if (d.fan   !== undefined) updateCard('fan',    d.fan);
+      if (d.door  !== undefined) updateCard('door',   d.door);
+      if (d.temp !== undefined) {
+        currentTemp = parseFloat(d.temp).toFixed(1);
+        currentHumi = parseFloat(d.humi).toFixed(1);
+        document.getElementById('state-temp').textContent = currentTemp + '°C / ' + currentHumi + '%';
+      }
+      if (d.gas !== undefined) {
+        document.getElementById('state-gas').textContent = d.gas + '%';
+        const gasCard = document.getElementById('card-gas');
+        if (d.gas > 40) {
+          gasCard.classList.add('on');
+          document.getElementById('state-gas').style.color = '#ef4444';
+          document.getElementById('state-gas').textContent = d.gas + '% - Cảnh báo!';
+        } else {
+          gasCard.classList.remove('on');
+          document.getElementById('state-gas').style.color = '';
+        }
+      }
+      
+      // Xử lý thông điệp quẹt thẻ RFID gửi từ ESP32
+      if (d.type === 'rfid') {
+        const matched = rfidWhitelist.find(c => c.uid === d.uid);
+        const cardName = matched ? matched.name : '';
+        
+        // Ghi lại lịch sử
+        const nowStr = new Date().toLocaleTimeString('vi', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) + ' ' + new Date().toLocaleDateString('vi');
+        rfidLogs.push({
+          time: nowStr,
+          uid: d.uid,
+          name: cardName,
+          allowed: d.allowed
+        });
+        if (rfidLogs.length > 100) rfidLogs.shift();
+        saveLogs();
+        
+        // Điền nhanh UID nếu thẻ chưa đăng ký
+        if (!matched) {
+          document.getElementById('newCardUid').value = d.uid;
+        }
+        
+        // Log vào chat log
+        if (d.allowed) {
+          addLog('action', `🚪 Thẻ hợp lệ: [${cardName}] (${d.uid}) đã mở cửa.`);
+          // Gửi phản hồi tên thẻ cho ESP32 hiển thị
+          mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'rfid_name', action: cardName }), { qos: 1 });
+        } else {
+          addLog('error', `⚠️ Thẻ không hợp lệ: (${d.uid}) muốn truy cập.`);
+        }
+      }
+    } catch(e) {}
+  });
+
+  mqttClient.on('error', (err) => {
+    setStatus('Lỗi: ' + err.message, '');
+    addLog('error', '❌ ' + err.message);
+  });
+
+  mqttClient.on('offline', () => {
+    setStatus('Mất kết nối - đang kết nối lại...', 'yellow');
+    document.getElementById('micBtn').disabled = true;
+  });
+}
+
+// ===== HỆ THỐNG GIAO TIẾP GIỌNG NÓI LIÊN TỤC (GEMINI LIVE MODE) =====
+let recognition = null;
+let isConversationActive = false; // Trạng thái cuộc gọi thoại có đang bật hay không
+let liveState = 'IDLE'; // Trạng thái hiện tại: IDLE, LISTENING, USER_SPEAKING, PROCESSING, SPEAKING, WAITING
+let silenceTimer = null;
+let recognitionRestartTimer = null;
+let conversationHistory = [];
+let activeUtterance = null;
+let activeSpeechTimeout = null;
+let audioCtx = null;
+
+// Hàm tạo âm thanh bíp thông minh trực tiếp từ trình duyệt
+function playSound(type) {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    if (type === 'start') {
+      // 1 âm thanh khởi động nhẹ nhàng
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+    } else if (type === 'think') {
+      // Báo hiệu đã dừng nói và chuẩn bị phản hồi
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'interrupt') {
+      // Âm thanh báo hiệu người dùng ngắt lời AI
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.06);
+    } else if (type === 'end') {
+      // 2 tiếng bíp trầm kết thúc cuộc gọi
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+
+      setTimeout(() => {
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(390, audioCtx.currentTime);
+        gain2.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+        osc2.start();
+        osc2.stop(audioCtx.currentTime + 0.2);
+      }, 150);
+    }
+  } catch (e) {
+    console.error('Không thể phát âm thanh bíp:', e);
+  }
+}
+
+// Khởi tạo bộ nhận diện giọng nói Web Speech API
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    addLog('error', '⚠️ Trình duyệt của bạn không hỗ trợ Web Speech API! Vui lòng dùng Chrome hoặc Safari.');
+    return null;
+  }
+
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = 'vi-VN';
+
+  rec.onstart = () => {
+    console.log('Speech recognition started');
+  };
+
+  rec.onresult = (event) => {
+    let interimTranscript = '';
+    let finalTranscript = '';
+
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        finalTranscript += event.results[i][0].transcript;
+      } else {
+        interimTranscript += event.results[i][0].transcript;
+      }
+    }
+
+    if (interimTranscript.trim().length > 0 || finalTranscript.trim().length > 0) {
+      // Hủy đếm ngược 5 giây khi người dùng bắt đầu nói hoặc ngắt lời
+      if (silenceTimer) {
+        clearInterval(silenceTimer);
+        silenceTimer = null;
+      }
+
+      // Xử lý NGẮT LỜI (Barge-in): Nếu AI đang nói, hủy nói ngay lập tức để lắng nghe
+      if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        playSound('interrupt');
+        console.log('Barge-in: Đã ngắt lời AI');
+        setLiveState('USER_SPEAKING');
+      }
+
+      if (interimTranscript.trim().length > 0) {
+        setLiveState('USER_SPEAKING');
+        document.getElementById('voiceStatus').innerHTML = `🎙️ <span style="color: #c084fc;">"${interimTranscript}"</span>`;
+      }
+    }
+
+    if (finalTranscript.trim().length > 0) {
+      console.log('Final speech detected:', finalTranscript);
+      // Dừng nghe tạm thời hoặc tạm khóa trạng thái để xử lý
+      setLiveState('PROCESSING');
+      playSound('think');
+      processLiveSpeech(finalTranscript);
+    }
+  };
+
+  rec.onerror = (event) => {
+    console.warn('SpeechRecognition error:', event.error);
+    if (event.error !== 'no-speech' && isConversationActive && event.error !== 'aborted') {
+      restartRecognition();
+    }
+  };
+
+  rec.onend = () => {
+    console.log('SpeechRecognition ended');
+    if (isConversationActive) {
+      restartRecognition();
+    }
+  };
+
+  return rec;
+}
+
+// Khởi chạy lại Speech Recognition để duy trì mic mở liên tục
+function restartRecognition() {
+  if (recognitionRestartTimer) clearTimeout(recognitionRestartTimer);
+  recognitionRestartTimer = setTimeout(() => {
+    if (isConversationActive && recognition) {
+      try {
+        recognition.start();
+      } catch (e) {
+        // Đã chạy sẵn
+      }
+    }
+  }, 100);
+}
+
+// Bắt đầu chế độ rảnh tay Gemini Live
+function startLiveConversation() {
+  isConversationActive = true;
+  playSound('start');
+
+  if (!recognition) {
+    recognition = initSpeechRecognition();
+  }
+
+  if (recognition) {
+    try {
+      recognition.start();
+    } catch (e) {
+      console.log('Recognition already running');
+    }
+  }
+
+  setLiveState('LISTENING');
+
+  // Kích hoạt âm thanh TTS cho iOS Safari bằng cách phát chuỗi rỗng
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance('');
+    window.speechSynthesis.speak(u);
+  }
+}
+
+// Tắt cuộc trò chuyện
+function stopLiveConversation() {
+  isConversationActive = false;
+
+  if (silenceTimer) {
+    clearInterval(silenceTimer);
+    silenceTimer = null;
+  }
+
+  if (recognition) {
+    try {
+      recognition.stop();
+    } catch (e) {}
+  }
+
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+
+  playSound('end');
+  setLiveState('IDLE');
+}
+
+// Nút Mic điều khiển Bật/Tắt cuộc trò chuyện
+function startVoice() {
+  if (isConversationActive) {
+    stopLiveConversation();
+  } else {
+    startLiveConversation();
+  }
+}
+
+// Cập nhật trạng thái hiển thị của nút Mic & Dòng chữ trạng thái
+function setLiveState(state) {
+  liveState = state;
+  const micBtn = document.getElementById('micBtn');
+  const voiceStatus = document.getElementById('voiceStatus');
+  if (!micBtn || !voiceStatus) return;
+
+  micBtn.className = 'mic-btn';
+  micBtn.innerHTML = '🎤';
+
+  switch (state) {
+    case 'IDLE':
+      voiceStatus.textContent = 'Nhấn mic để bắt đầu cuộc trò chuyện';
+      voiceStatus.style.color = '#a78bfa';
+      break;
+    case 'LISTENING':
+      micBtn.classList.add('state-listening');
+      micBtn.innerHTML = '👂';
+      voiceStatus.textContent = '🎙️ Đang nghe... Hãy nói';
+      voiceStatus.style.color = '#60a5fa';
+      break;
+    case 'USER_SPEAKING':
+      micBtn.classList.add('state-user-speaking');
+      micBtn.innerHTML = '💬';
+      voiceStatus.style.color = '#f472b6';
+      break;
+    case 'PROCESSING':
+      micBtn.classList.add('state-processing');
+      micBtn.innerHTML = '⏳';
+      voiceStatus.textContent = '🤖 Jarvis đang suy nghĩ...';
+      voiceStatus.style.color = '#fbbf24';
+      break;
+    case 'SPEAKING':
+      micBtn.classList.add('state-speaking');
+      micBtn.innerHTML = '🗣️';
+      voiceStatus.style.color = '#34d399';
+      break;
+    case 'WAITING':
+      micBtn.classList.add('state-waiting');
+      micBtn.innerHTML = '⏳';
+      voiceStatus.style.color = '#fbbf24';
+      break;
+  }
+}
+
+// Bộ đếm ngược 5 giây im lặng để tự động ngắt kết nối
+function startSilenceTimer() {
+  if (silenceTimer) clearInterval(silenceTimer);
+  setLiveState('WAITING');
+
+  let countdown = 5;
+  document.getElementById('voiceStatus').innerHTML = `⏳ Đang chờ bạn nói tiếp... (${countdown}s)`;
+
+  silenceTimer = setInterval(() => {
+    countdown--;
+    if (countdown > 0) {
+      document.getElementById('voiceStatus').innerHTML = `⏳ Đang chờ bạn nói tiếp... (${countdown}s)`;
+    } else {
+      clearInterval(silenceTimer);
+      silenceTimer = null;
+      console.log('Hết 5s im lặng, ngắt hội thoại.');
+      stopLiveConversation();
+    }
+  }, 1000);
+}
+
+// Xử lý gửi văn bản giọng nói lên API Groq
+async function processLiveSpeech(text) {
+  addLog('user', '💬 "' + text + '"');
+  const apiKey = localStorage.getItem('sh_groqkey');
+  
+  if (!apiKey || apiKey.trim() === '') {
+    addLog('error', '❌ Lỗi: Chưa cấu hình Groq API Key trong tab Cấu hình!');
+    document.getElementById('voiceStatus').textContent = '❌ Chưa cấu hình API Key';
+    if (isConversationActive) startSilenceTimer();
+    return;
+  }
+
+  const promptSystem = `Bạn là trợ lý ảo nhà thông minh tên Jarvis. Bạn có 2 nhiệm vụ:
+1. Nhận diện và thực thi điều khiển thiết bị thông minh khi được yêu cầu.
+2. Trả lời các câu hỏi trò chuyện, kiến thức thông thường của người dùng một cách đầy đủ, thông minh, chi tiết và thân thiện bằng CHÍNH NGôn ngữ mà người dùng đang giao tiếp.
+
+Thiết bị hợp lệ: light1 (đèn 1), light2 (đèn 2), fan (quạt), door (cửa), lcd_tab (màn hình hiển thị LCD, hành động là "1" - màn hình chính/màn chủ, "2" - màn hình cảm biến, "3" - màn hình lời nhắc), all (tất cả).
+Hành động hợp lệ: "on" (bật/mở), "off" (tắt/đóng/khóa) hoặc "1", "2", "3" (dành riêng cho lcd_tab).
+
+Yêu cầu trả về JSON định dạng sau (không giải thích hay thêm văn bản khác ngoài JSON):
+{
+  "commands": [
+    { "device": "tên_thiết_bị", "action": "hành_động" }
+  ],
+  "speak": "câu_trả_lời_hoặc_câu_nói_phản_hồi",
+  "lang": "ma_ngôn_ngữ_bcp47"
+}
+
+Quy tắc:
+- Khi người dùng ra lệnh điều khiển: Tạo danh sách lệnh trong "commands" và phản hồi xác nhận trong "speak" bằng ngôn ngữ phù hợp.
+- Khi hỏi về nhiệt độ, độ ẩm, thời tiết trong nhà: Đặt "commands" là [{"device": "lcd_tab", "action": "2"}] và "speak" là "temp_humi". Trường "lang" đặt là "vi-VN".
+- Khi người dùng yêu cầu chuyển màn hình, đổi tab LCD: Đặt lệnh tương ứng của "lcd_tab" vào "commands".
+- Khi người dùng trò chuyện, hỏi thông tin: Trả lời trực tiếp vào trường "speak" một cách thông minh, chi tiết bằng chính ngôn ngữ họ dùng, đồng thời ghi mã ngôn ngữ BCP-47 tương ứng vào trường "lang" (Ví dụ: "en-US" cho tiếng Anh, "vi-VN" cho tiếng Việt).
+- Hỗ trợ sửa lỗi chính tả phát âm tiếng Việt (Ví dụ: "bật", "bậc", "mở" -> "on"; "tắt", "tặc", "khóa" -> "off").`;
+
+  // Thêm câu nói của người dùng vào lịch sử ngữ cảnh
+  conversationHistory.push({ role: 'user', content: text });
+  if (conversationHistory.length > 20) {
+    conversationHistory.shift();
+  }
+  updateClearContextButton();
+
+  // Xây dựng danh sách tin nhắn gửi lên API
+  const messages = [
+    { role: 'system', content: promptSystem },
+    ...conversationHistory
+  ];
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 7000); // 7s timeout
+
+  try {
+    const res = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: messages,
+          temperature: 0.1,
+          response_format: { type: "json_object" }
+        })
+      }
+    );
+    clearTimeout(timeoutId);
+    
+    const data = await res.json();
+    console.log('Groq raw:', JSON.stringify(data));
+
+    if (data.error) {
+      addLog('error', '❌ API lỗi: ' + data.error.message);
+      document.getElementById('voiceStatus').textContent = '❌ ' + data.error.message;
+      if (isConversationActive) startSilenceTimer();
+      return;
+    }
+
+    const raw = data.choices?.[0]?.message?.content?.trim();
+    if (!raw) {
+      addLog('error', '❌ Groq không trả về nội dung.');
+      if (isConversationActive) startSilenceTimer();
+      return;
+    }
+
+    // Thêm phản hồi của trợ lý vào lịch sử ngữ cảnh
+    conversationHistory.push({ role: 'assistant', content: raw });
+    if (conversationHistory.length > 20) {
+      conversationHistory.shift();
+    }
+    updateClearContextButton();
+
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const cmd = JSON.parse(clean);
+
+    if (cmd.error) {
+      addLog('error', '❌ ' + cmd.error);
+      document.getElementById('voiceStatus').textContent = '❌ Không nhận ra lệnh';
+      speak("Tôi không hiểu câu lệnh này.");
+    } else {
+      let executedCount = 0;
+      let delayMs = 0;
+
+      if (cmd.commands && Array.isArray(cmd.commands)) {
+        cmd.commands.forEach(c => {
+          if (c.device && c.action) {
+            setTimeout(() => {
+              const msg = getActionText(c.device, c.action);
+              addLog('action', '🔧 ' + msg);
+              sendCommand(c.device, c.action);
+            }, delayMs);
+            delayMs += 250;
+            executedCount++;
+          }
+        });
+      }
+
+      // Xử lý phản hồi giọng nói (TTS)
+      let speakText = cmd.speak;
+      let speakLang = cmd.lang || 'vi-VN';
+      if (speakText) {
+        if (speakText === 'temp_humi') {
+          speakLang = 'vi-VN';
+          if (currentTemp !== null && currentHumi !== null) {
+            speakText = `Nhiệt độ trong nhà hiện tại là ${currentTemp} độ C, và độ ẩm là ${currentHumi} phần trăm.`;
+          } else {
+            speakText = "Hiện tại tôi chưa nhận được dữ liệu cảm biến từ thiết bị.";
+          }
+        }
+        addLog('ai', '🗣️ [' + speakLang + '] ' + speakText);
+        speak(speakText, speakLang);
+        document.getElementById('voiceStatus').textContent = speakText;
+      } else {
+        if (executedCount > 0) {
+          document.getElementById('voiceStatus').textContent = `✅ Đã gửi ${executedCount} lệnh`;
+        }
+        if (isConversationActive) startSilenceTimer();
+      }
+    }
+  } catch(err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      addLog('error', '❌ Lỗi: Kết nối tới Groq API bị quá thời gian (7 giây). Kiểm tra mạng hoặc bật/tắt VPN (1.1.1.1).');
+      document.getElementById('voiceStatus').textContent = '❌ Lỗi kết nối (Timeout)';
+      speak("Không kết nối được trợ lý ảo, vui lòng kiểm tra mạng hoặc VPN.");
+    } else {
+      addLog('error', '❌ Lỗi: ' + err.message);
+      document.getElementById('voiceStatus').textContent = '❌ Lỗi xử lý';
+    }
+    if (isConversationActive) startSilenceTimer();
+  }
+}
+
+function sendCommand(device, action) {
+  if (!mqttClient || !mqttClient.connected) {
+    addLog('error', '❌ MQTT chưa kết nối!'); return;
+  }
+  mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device, action }), { qos:1 });
+  if (device === 'all') {
+    ['light1','light2','fan'].forEach(d => updateCard(d, action === 'on'));
+  } else {
+    updateCard(device, action === 'on');
+  }
+}
+
+
+function updateCard(device, isOn) {
+  deviceStates[device] = isOn;
+  const card  = document.getElementById('card-'  + device);
+  const state = document.getElementById('state-' + device);
+  if (!card) return;
+  card.className    = 'device-card' + (isOn ? ' on' : '');
+  if (device === 'door') {
+    state.textContent = isOn ? 'Mo' : 'Dong';
+  } else {
+    state.textContent = isOn ? 'Bat' : 'Tat';
+  }
+}
+
+function getActionText(device, action) {
+  const names = { light1:'Den 1', light2:'Den 2', fan:'Quat', door:'Cua', all:'Tat ca', lcd_tab:'Man hinh LCD', reminder:'Loi nhac LCD' };
+  if (device === 'lcd_tab') return `Chuyen sang man hinh Tab ${action}`;
+  if (device === 'reminder') return `Gui loi nhac: "${action}"`;
+  let actStr = device === 'door' ? (action === 'on' ? 'MO v' : 'DONG v') : (action === 'on' ? 'BAT v' : 'TAT v');
+  return (names[device] || device) + ' -> ' + actStr;
+}
+
+function addLog(type, msg) {
+  const log = document.getElementById('chatLog');
+  const now = new Date().toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const div = document.createElement('div');
+  div.className = 'chat-msg';
+  div.innerHTML = `<span class="time">${now}</span><span class="${type}">${msg}</span>`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  while (log.children.length > 60) log.removeChild(log.firstChild);
+}
+
+function setStatus(text, color) {
+  const dot    = document.getElementById('mqttDot');
+  const status = document.getElementById('mqttStatus');
+  status.textContent = text;
+  dot.className = 'dot ' + (color || '');
+}
+
+function speak(text, langCode) {
+  langCode = langCode || 'vi-VN';
+  if (!window.speechSynthesis || !text) {
+    if (isConversationActive) startSilenceTimer();
+    return;
+  }
+  window.speechSynthesis.cancel();
+  
+  let cleanText = text;
+  if (langCode.startsWith('vi')) {
+    cleanText = text
+      .replace(/ do C/gi, ' do').replace(/C/gi, ' do')
+      .replace(/%/g, ' phan tram')
+      .replace(/\bjarvis\b/gi, 'Gia vit').replace(/\bapi\b/gi, 'A P I')
+      .replace(/\bgroq\b/gi, 'Go roc').replace(/\bllama\b/gi, 'La ma')
+      .replace(/\bmqtt\b/gi, 'Mo Quy Te Te').replace(/\bhivemq\b/gi, 'Hai vo Mo Quy')
+      .replace(/\bsmart home\b/gi, 'Nha thong minh').replace(/\bsmart\b/gi, 'thong minh')
+      .replace(/\bon\b/gi, 'bat').replace(/\boff\b/gi, 'tat')
+      .replace(/\bwifi\b/gi, 'Quai phai').replace(/\bwi-fi\b/gi, 'Quai phai');
+  }
+
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  utterance.lang = langCode;
+  utterance.rate = langCode.startsWith('vi') ? 1.05 : 1.0;
+  utterance.pitch = 1.0;
+  utterance.volume = 1.0;
+
+  const voices = window.speechSynthesis.getVoices();
+  const langPrefix = langCode.split('-')[0].toLowerCase();
+  let targetVoice = null;
+  const savedViVoice = localStorage.getItem('sh_vi_voice');
+  const savedEnVoice = localStorage.getItem('sh_en_voice');
+  if (langPrefix === 'vi' && savedViVoice) targetVoice = voices.find(v => v.name === savedViVoice);
+  else if (langPrefix === 'en' && savedEnVoice) targetVoice = voices.find(v => v.name === savedEnVoice);
+  if (!targetVoice) {
+    const mv = voices.filter(v => v.lang.toLowerCase().replace('_','-').startsWith(langPrefix));
+    targetVoice = mv.find(v => { const n=v.name.toLowerCase(); return n.includes('natural')||n.includes('online')||n.includes('premium')||n.includes('enhanced')||n.includes('google'); }) || mv[0];
+  }
+  if (targetVoice) utterance.voice = targetVoice;
+
+  if (isConversationActive) {
+    setLiveState('SPEAKING');
+    utterance.onend = () => {
+      if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING') startSilenceTimer();
+    };
+    utterance.onerror = (e) => {
+      if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING' && e.error !== 'interrupted') startSilenceTimer();
+    };
+  }
+  window.speechSynthesis.speak(utterance);
+}
+
+function populateVoiceSelectors() {
+  if (!window.speechSynthesis) return;
+  const list = window.speechSynthesis.getVoices();
+  const viSelect = document.getElementById('viVoiceSelect');
+  const enSelect = document.getElementById('enVoiceSelect');
+  if (!viSelect || !enSelect) return;
+  const prevVi = localStorage.getItem('sh_vi_voice');
+  const prevEn = localStorage.getItem('sh_en_voice');
+  viSelect.innerHTML = '<option value="">-- Tu dong chon --</option>';
+  enSelect.innerHTML = '<option value="">-- Tu dong chon --</option>';
+  list.filter(v => v.lang.toLowerCase().replace('_','-').startsWith('vi')).forEach(v => {
+    const opt = document.createElement('option'); opt.value = v.name; opt.textContent = v.name; viSelect.appendChild(opt);
+  });
+  list.filter(v => v.lang.toLowerCase().replace('_','-').startsWith('en')).forEach(v => {
+    const opt = document.createElement('option'); opt.value = v.name; opt.textContent = v.name; enSelect.appendChild(opt);
+  });
+  if (prevVi) viSelect.value = prevVi;
+  if (prevEn) enSelect.value = prevEn;
+}
+
+function saveSelectedVoices() {
+  localStorage.setItem('sh_vi_voice', document.getElementById('viVoiceSelect').value);
+  localStorage.setItem('sh_en_voice', document.getElementById('enVoiceSelect').value);
+}
+
+// ===== QUAN LY THE RFID & LOI NHAC =====
+let rfidWhitelist = JSON.parse(localStorage.getItem('sh_rfid_whitelist') || '[]');
+let rfidLogs = JSON.parse(localStorage.getItem('sh_rfid_logs') || '[]');
+
+function switchWebTab(tabName) {
+  document.getElementById('tab-control').style.display = tabName === 'control' ? 'block' : 'none';
+  document.getElementById('tab-rfid').style.display = tabName === 'rfid' ? 'block' : 'none';
+  document.getElementById('btn-tab-control').classList.toggle('active', tabName === 'control');
+  document.getElementById('btn-tab-rfid').classList.toggle('active', tabName === 'rfid');
+}
+
+function saveWhitelist() { localStorage.setItem('sh_rfid_whitelist', JSON.stringify(rfidWhitelist)); renderWhitelist(); syncWhitelistToEsp32(); }
+function saveLogs() { localStorage.setItem('sh_rfid_logs', JSON.stringify(rfidLogs)); renderLogs(); }
+
+function renderWhitelist() {
+  const tbody = document.getElementById('rfidWhitelistBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (rfidWhitelist.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666;">Chua co the nao duoc dang ky</td></tr>'; return; }
+  rfidWhitelist.forEach(card => {
+    const isBlocked = card.blocked === true;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><code>${card.uid}</code></td><td>${card.name}</td><td><span class="badge ${isBlocked ? 'denied' : 'allowed'}" style="cursor:pointer;" onclick="toggleBlockCard('${card.uid}')">${isBlocked ? 'Bi cam' : 'Cho phep'}</span></td><td><button class="btn-danger" onclick="deleteCard('${card.uid}')">Xoa</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderLogs() {
+  const tbody = document.getElementById('rfidLogsBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (rfidLogs.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666;">Chua co lich su ra vao</td></tr>'; return; }
+  rfidLogs.slice().reverse().forEach(log => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${log.time}</td><td><code>${log.uid}</code></td><td>${log.name || 'The la'}</td><td><span class="badge ${log.allowed?'allowed':'denied'}">${log.allowed?'Mo cua thanh cong':'Bi tu choi'}</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function addNewCard() {
+  const uidInput = document.getElementById('newCardUid');
+  const nameInput = document.getElementById('newCardName');
+  const uid = uidInput.value.trim().toUpperCase();
+  const name = removeVietnameseTones(nameInput.value.trim());
+  if (!uid || !name) { alert('Vui long nhap day du Ma the UID va Ten chu the!'); return; }
+  if (rfidWhitelist.some(c => c.uid === uid)) { alert('Ma the UID nay da duoc dang ky!'); return; }
+  rfidWhitelist.push({ uid, name, blocked: false }); saveWhitelist();
+  uidInput.value = ''; nameInput.value = '';
+  addLog('action', 'Dang ky the moi: ' + name + ' (' + uid + ')');
+}
+
+function deleteCard(uid) {
+  if (!confirm('Ban co chac chan muon xoa the nay?')) return;
+  rfidWhitelist = rfidWhitelist.filter(c => c.uid !== uid);
+  saveWhitelist(); addLog('action', 'Da xoa the: ' + uid);
+}
+
+function syncWhitelistToEsp32() {
+  if (!mqttClient || !mqttClient.connected) return;
+  const allowedCards = rfidWhitelist.filter(c => !c.blocked);
+  const uids = allowedCards.map(c => c.uid).join(',') + (allowedCards.length > 0 ? ',' : '');
   mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'rfid_sync', action: uids }), { qos: 1 });
 }
 
