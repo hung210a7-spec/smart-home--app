@@ -766,6 +766,8 @@ let silenceTimer = null;
 let audioCtx = null;
 let recognition = null;
 let recRestartTimer = null;
+let activeUtterance = null;
+let activeSpeechTimeout = null;
 
 function initRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1150,9 +1152,6 @@ function pickBestVoice(matchedVoices) {
   return [...matchedVoices].sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
 }
 
-// Làm sạch & chuẩn hoá văn bản trước khi đọc — áp dụng cho mọi ngôn ngữ:
-// bỏ định dạng Markdown (AI đôi khi lỡ trả về **đậm**, _nghiêng_, # tiêu đề...),
-// bỏ emoji, gọn khoảng trắng/dấu câu thừa.
 function stripMarkdownAndEmoji(text) {
   if (!text) return '';
   return text
@@ -1167,7 +1166,6 @@ function stripMarkdownAndEmoji(text) {
     .trim();
 }
 
-// Chuẩn hoá ký hiệu/đơn vị sang dạng đọc được — đây là phần chính khắc phục lỗi
 function normalizeSymbolsVi(text) {
   if (!text) return '';
   return text
@@ -1209,30 +1207,32 @@ function speak(text, langCode = 'vi-VN') {
     if (isConversationActive) startSilenceTimer();
     return;
   }
+  
+  // Huy am thanh dang phat va don dep cac bo hen gio truoc do
   window.speechSynthesis.cancel();
+  if (activeSpeechTimeout) {
+    clearTimeout(activeSpeechTimeout);
+    activeSpeechTimeout = null;
+  }
 
   let cleanText = stripMarkdownAndEmoji(text);
   if (langCode.startsWith('vi')) {
     cleanText = normalizeSymbolsVi(cleanText);
   } else {
-    // Với ngôn ngữ khác vẫn nên đọc được các ký hiệu phổ biến thay vì bỏ qua
-    cleanText = cleanText.replace(/°\s*C\b/gi, ' degrees C').replace(/°\s*F\b/gi, ' degrees F').replace(/%/g, ' percent');
+    cleanText = cleanText.replace(/\\u00b0\\s*C\\b/gi, ' degrees C').replace(/\\u00b0\\s*F\\b/gi, ' degrees F').replace(/%/g, ' percent');
   }
 
-  const utterance = new SpeechSynthesisUtterance(cleanText);
-  utterance.lang = langCode;
-  
-  // Tăng nhẹ tốc độ đọc đối với tiếng Việt
-  utterance.rate = langCode.startsWith('vi') ? 1.05 : 1.0;
-  utterance.pitch = 1.0;
-  utterance.volume = 1.0;
+  // Tao doi tuong Utterance va luu vao bien toan cuc de tranh bi Garbage Collection
+  activeUtterance = new SpeechSynthesisUtterance(cleanText);
+  activeUtterance.lang = langCode;
+  activeUtterance.rate = langCode.startsWith('vi') ? 1.05 : 1.0;
+  activeUtterance.pitch = 1.0;
+  activeUtterance.volume = 1.0;
 
   const voices = window.speechSynthesis.getVoices();
   const langPrefix = langCode.split('-')[0].toLowerCase();
   
   let targetVoice = null;
-
-  // 1. Kiểm tra lựa chọn thủ công từ localStorage
   const savedViVoice = localStorage.getItem('sh_vi_voice');
   const savedEnVoice = localStorage.getItem('sh_en_voice');
 
@@ -1242,37 +1242,51 @@ function speak(text, langCode = 'vi-VN') {
     targetVoice = voices.find(v => v.name === savedEnVoice);
   }
 
-  // 2. Nếu không chọn thủ công hoặc giọng thủ công không khả dụng, chấm điểm chất lượng
-  //    và tự động chọn giọng tốt nhất hiện có (ưu tiên giọng online/cloud).
   if (!targetVoice) {
     const matchedVoices = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
     targetVoice = pickBestVoice(matchedVoices);
   }
   
   if (targetVoice) {
-    utterance.voice = targetVoice;
+    activeUtterance.voice = targetVoice;
     console.log('Selected Voice:', targetVoice.name, '(' + langCode + ')', 'score:', scoreVoice(targetVoice));
   }
 
-  if (isConversationActive) {
-    setLiveState('SPEAKING');
+  // Su dung setTimeout 250ms de giai quyet triet de loi bat dong bo race condition cua Chrome
+  activeSpeechTimeout = setTimeout(() => {
+    if (!isConversationActive) {
+      window.speechSynthesis.speak(activeUtterance);
+      return;
+    }
 
-    utterance.onend = () => {
-      console.log('AI nói xong, bắt đầu chờ 5s');
+    setLiveState('SPEAKING');
+    
+    // Watchdog safety timer phong truong hop onend khong kich hoat do loi he thong TTS cua Chrome
+    let watchdogTimer = setTimeout(() => {
+      console.warn('Watchdog kich hoat: TTS ket thuc cham hoac bi do.');
+      if (isConversationActive && liveState === 'SPEAKING') {
+        startSilenceTimer();
+      }
+    }, Math.max(4000, cleanText.length * 100 + 2000)); // 100ms moi ky tu + 2s du phong
+
+    activeUtterance.onend = () => {
+      clearTimeout(watchdogTimer);
+      console.log('AI da noi xong, bat dau cho 5s');
       if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING') {
         startSilenceTimer();
       }
     };
 
-    utterance.onerror = (e) => {
-      console.warn('Lỗi phát âm thanh:', e);
+    activeUtterance.onerror = (e) => {
+      clearTimeout(watchdogTimer);
+      console.warn('Loi phat am thanh:', e);
       if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING' && e.error !== 'interrupted') {
         startSilenceTimer();
       }
     };
-  }
 
-  window.speechSynthesis.speak(utterance);
+    window.speechSynthesis.speak(activeUtterance);
+  }, 250);
 }
 
 // Đọc thử một câu mẫu chứa các ký tự/đơn vị hay bị đọc sai, để người dùng nghe và
