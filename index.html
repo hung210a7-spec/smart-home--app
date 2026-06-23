@@ -975,7 +975,7 @@ Quy tắc:
 - Khi người dùng ra lệnh điều khiển: Tạo danh sách lệnh trong "commands" và phản hồi xác nhận trong "speak" bằng ngôn ngữ phù hợp.
 - Khi hỏi về nhiệt độ, độ ẩm, thời tiết trong nhà: Đặt "commands" là [{"device": "lcd_tab", "action": "2"}] và "speak" là "temp_humi". Trường "lang" đặt là "vi-VN".
 - Khi hỏi về nồng độ khí gas hoặc rò rỉ ga: Đặt "commands" là [{"device": "lcd_tab", "action": "2"}] và "speak" là "gas_status". Trường "lang" đặt là "vi-VN".
-- Khi người dùng muốn phát tin nhắn hoặc thông báo qua loa vật lý ở nhà (ví dụ: "nói qua loa nội dung...", "phát loa câu này...", "thông báo qua loa là..."): Đặt "device" là "speak_speaker" và "action" là nội dung chính xác cần phát qua loa (bằng tiếng Việt).
+- CỰC KỲ QUAN TRỌNG: Khi người dùng yêu cầu phát tin nhắn, nói qua loa, phát loa, gửi lời nhắn qua loa, hoặc thông báo qua loa (ví dụ: "nói qua loa nội dung...", "phát loa câu này...", "thông báo qua loa là...", "gửi lời nhắn qua loa...", "đọc qua loa câu..."): Bạn PHẢI thêm một lệnh vào "commands" với "device": "speak_speaker" và "action" là nội dung tiếng Việt có dấu đầy đủ mà người dùng muốn phát qua loa. Ví dụ: [{"device": "speak_speaker", "action": "Cơm chín rồi"}].
 - Khi người dùng yêu cầu chuyển màn hình, đổi tab LCD: Đặt lệnh tương ứng của "lcd_tab" vào "commands".
 - Khi người dùng trò chuyện, hỏi thông tin: Trả lời trực tiếp vào trường "speak" một cách thông minh, chi tiết bằng chính ngôn ngữ họ dùng, đồng thời ghi mã ngôn ngữ BCP-47 tương ứng vào trường "lang" (Ví dụ: "en-US" cho tiếng Anh, "vi-VN" cho tiếng Việt).
 - Hỗ trợ sửa lỗi chính tả phát âm tiếng Việt (Ví dụ: "bật", "bậc", "mở" -> "on"; "tắt", "tặc", "khóa" -> "off").`;
