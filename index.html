@@ -420,6 +420,14 @@ body {
     <div class="chat-msg"><span class="time">--:--</span><span class="ai">Nhật ký lệnh sẽ hiển thị ở đây...</span></div>
   </div>
 
+  <div class="speaker-section" style="background:#1e1e3a; padding:15px; border-radius:15px; margin-top:15px; border:1px solid #2d2d5a;">
+    <h3 style="margin-top:0; font-size:1em; color:#fff; display:flex; align-items:center; gap:8px;">📢 Phát loa thông báo</h3>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <input type="text" id="speakerMsg" placeholder="Nhập lời nhắn gửi về loa nhà bạn..." style="flex:1; background:#0f0f1a; border:1px solid #2d2d5a; border-radius:8px; padding:10px; color:#fff; outline:none;" />
+      <button onclick="sendSpeakerMsg()" style="background:linear-gradient(90deg,#7c3aed,#2563eb); border:none; border-radius:8px; color:#fff; padding:0 20px; cursor:pointer; font-weight:bold; height: 38px;">Gửi 📢</button>
+    </div>
+  </div>
+
   <div class="device-grid">
     <div class="device-card" id="card-light1" onclick="manualToggle('light1')">
       <div class="icon">💡</div>
@@ -967,6 +975,7 @@ Quy tắc:
 - Khi người dùng ra lệnh điều khiển: Tạo danh sách lệnh trong "commands" và phản hồi xác nhận trong "speak" bằng ngôn ngữ phù hợp.
 - Khi hỏi về nhiệt độ, độ ẩm, thời tiết trong nhà: Đặt "commands" là [{"device": "lcd_tab", "action": "2"}] và "speak" là "temp_humi". Trường "lang" đặt là "vi-VN".
 - Khi hỏi về nồng độ khí gas hoặc rò rỉ ga: Đặt "commands" là [{"device": "lcd_tab", "action": "2"}] và "speak" là "gas_status". Trường "lang" đặt là "vi-VN".
+- Khi người dùng muốn phát tin nhắn hoặc thông báo qua loa vật lý ở nhà (ví dụ: "nói qua loa nội dung...", "phát loa câu này...", "thông báo qua loa là..."): Đặt "device" là "speak_speaker" và "action" là nội dung chính xác cần phát qua loa (bằng tiếng Việt).
 - Khi người dùng yêu cầu chuyển màn hình, đổi tab LCD: Đặt lệnh tương ứng của "lcd_tab" vào "commands".
 - Khi người dùng trò chuyện, hỏi thông tin: Trả lời trực tiếp vào trường "speak" một cách thông minh, chi tiết bằng chính ngôn ngữ họ dùng, đồng thời ghi mã ngôn ngữ BCP-47 tương ứng vào trường "lang" (Ví dụ: "en-US" cho tiếng Anh, "vi-VN" cho tiếng Việt).
 - Hỗ trợ sửa lỗi chính tả phát âm tiếng Việt (Ví dụ: "bật", "bậc", "mở" -> "on"; "tắt", "tặc", "khóa" -> "off").`;
