@@ -1388,6 +1388,19 @@ function switchWebTab(tabName) {
 function saveWhitelist() { localStorage.setItem('sh_rfid_whitelist', JSON.stringify(rfidWhitelist)); renderWhitelist(); syncWhitelistToEsp32(); }
 function saveLogs() { localStorage.setItem('sh_rfid_logs', JSON.stringify(rfidLogs)); renderLogs(); }
 
+function sendSpeakerMsg() {
+  const msgInput = document.getElementById('speakerMsg');
+  const text = msgInput.value.trim();
+  if (!text) return;
+  if (!mqttClient || !mqttClient.connected) {
+    alert('Vui lòng kết nối MQTT trước!');
+    return;
+  }
+  mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'speak_speaker', action: text }), { qos: 1 });
+  addLog('action', '📢 Gửi lời nhắn phát loa: ' + text);
+  msgInput.value = '';
+}
+
 function renderWhitelist() {
   const tbody = document.getElementById('rfidWhitelistBody');
   if (!tbody) return;
