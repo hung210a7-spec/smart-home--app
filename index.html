@@ -703,11 +703,8 @@ function connect() {
         document.getElementById('state-temp').textContent = currentTemp + '°C / ' + currentHumi + '%';
       }
 
-      // ── Khí Gas — CHỈ từ Slave ESP32 thường ────────────────────────
-      // S3 không cắm cảm biến gas nữa nhưng vẫn publish trường "gas".
-      // Phân biệt: S3 luôn gửi "temp" + "gas" cùng nhau → bỏ qua.
-      // Slave chỉ gửi "gas" (không có "temp") → đây là dữ liệu thật.
-      if (d.gas !== undefined && d.temp === undefined) {
+      // ── Khí Gas — đọc trực tiếp từ ESP32-S3 (gửi cùng JSON với temp) ──
+      if (d.gas !== undefined) {
         const gasCard = document.getElementById('card-gas');
         if (d.gas > 40) {
           gasCard.classList.add('on');
