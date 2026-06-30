@@ -703,7 +703,11 @@ function connect() {
         document.getElementById('state-temp').textContent = currentTemp + '°C / ' + currentHumi + '%';
       }
 
-      // ── Khí Gas — đọc trực tiếp từ ESP32-S3 (gửi cùng JSON với temp) ──
+      // ── Khí Gas ──────────────────────────────────────────────────
+      // FIX: code cũ có điều kiện `d.gas !== undefined && d.temp === undefined`.
+      // Nhưng ESP32-S3 luôn gửi "temp" VÀ "gas" CHUNG 1 gói JSON (cùng
+      // publishStatus()), nên d.temp không bao giờ undefined khi có gas
+      // → card Gas mãi mãi không cập nhật. Bỏ điều kiện thừa đó.
       if (d.gas !== undefined) {
         const gasCard = document.getElementById('card-gas');
         if (d.gas > 40) {
