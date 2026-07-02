@@ -10,218 +10,218 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
---panel: #131419;
---panel-raised: #1b1d24;
---panel-inset: #0c0d11;
---brass: #c89b5c;
---brass-bright: #e8c285;
---brass-dim: #6f5a3a;
---signal-green: #5fbf8d;
---signal-amber: #e0a458;
---signal-red: #c9694f;
---signal-blue: #6b9bd1;
---ink: #ece8e0;
---ink-dim: #8b8d96;
---line: rgba(200, 155, 92, 0.14);
+  --panel: #131419;
+  --panel-raised: #1b1d24;
+  --panel-inset: #0c0d11;
+  --brass: #c89b5c;
+  --brass-bright: #e8c285;
+  --brass-dim: #6f5a3a;
+  --signal-green: #5fbf8d;
+  --signal-amber: #e0a458;
+  --signal-red: #c9694f;
+  --signal-blue: #6b9bd1;
+  --ink: #ece8e0;
+  --ink-dim: #8b8d96;
+  --line: rgba(200, 155, 92, 0.14);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
-font-family: 'Inter', 'Segoe UI', sans-serif;
-background:
-radial-gradient(ellipse 700px 420px at 50% -8%, rgba(200,155,92,0.07), transparent 60%),
-var(--panel);
-color: var(--ink);
-min-height: 100vh;
-padding-bottom: 40px;
-overflow-x: hidden;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(ellipse 700px 420px at 50% -8%, rgba(200,155,92,0.07), transparent 60%),
+    var(--panel);
+  color: var(--ink);
+  min-height: 100vh;
+  padding-bottom: 40px;
+  overflow-x: hidden;
 }
 @media (prefers-reduced-motion: reduce) {
-*, *::before, *::after {
-animation-duration: 0.01ms !important;
-animation-iteration-count: 1 !important;
-transition-duration: 0.01ms !important;
-}
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 :focus-visible { outline: 2px solid var(--brass-bright); outline-offset: 2px; border-radius: 4px; }
 
 @keyframes fadeInDown {
-from { opacity: 0; transform: translateY(-10px); }
-to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .header {
-padding: 30px 20px 14px;
-text-align: center;
-animation: fadeInDown 0.6s ease both;
+  padding: 30px 20px 14px;
+  text-align: center;
+  animation: fadeInDown 0.6s ease both;
 }
 .header .eyebrow {
-font-family: 'JetBrains Mono', monospace;
-font-size: 0.66em;
-letter-spacing: 3px;
-text-transform: uppercase;
-color: var(--brass-dim);
-margin-bottom: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.66em;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--brass-dim);
+  margin-bottom: 8px;
 }
 .header h1 {
-font-family: 'Space Grotesk', sans-serif;
-font-size: 2em;
-font-weight: 700;
-letter-spacing: 1px;
-color: var(--ink);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2em;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--ink);
 }
 .header h1 .accent { color: var(--brass-bright); }
 .header::after {
-content: '';
-display: block;
-width: 44px;
-height: 2px;
-background: linear-gradient(90deg, transparent, var(--brass), transparent);
-margin: 14px auto 0;
+  content: '';
+  display: block;
+  width: 44px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brass), transparent);
+  margin: 14px auto 0;
 }
 .status-bar {
-display: flex;
-align-items: center;
-justify-content: center;
-gap: 8px;
-margin-top: 14px;
-font-family: 'JetBrains Mono', monospace;
-font-size: 0.72em;
-letter-spacing: 0.5px;
-text-transform: uppercase;
-color: var(--ink-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72em;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
 }
 .dot {
-width: 8px; height: 8px; border-radius: 50%;
-background: #34363e;
-box-shadow: inset 0 1px 2px rgba(0,0,0,0.6);
-transition: all 0.3s;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #34363e;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.6);
+  transition: all 0.3s;
 }
 .dot.green  { background: var(--signal-green); box-shadow: 0 0 8px var(--signal-green); }
 .dot.yellow { background: var(--signal-amber); box-shadow: 0 0 8px var(--signal-amber); }
 
 .setup-panel {
-background: var(--panel-raised);
-border: 1px solid var(--line);
-border-radius: 16px;
-margin: 14px 16px;
-padding: 20px;
-box-shadow: 0 4px 18px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.02);
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin: 14px 16px;
+  padding: 20px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.02);
 }
 .setup-panel h3 {
-font-family: 'JetBrains Mono', monospace;
-font-size: 0.68em;
-letter-spacing: 2px;
-text-transform: uppercase;
-color: var(--brass);
-margin-bottom: 16px;
-font-weight: 600;
-display: flex;
-align-items: center;
-gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68em;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--brass);
+  margin-bottom: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .setup-panel h3::before { content:''; width:14px; height:1px; background: var(--brass-dim); }
 .input-group { margin-bottom:14px; }
 .input-group label {
-font-family: 'JetBrains Mono', monospace;
-font-size:0.68em;
-color:var(--ink-dim);
-display:block;
-margin-bottom:7px;
-letter-spacing: 0.6px;
-text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
+  font-size:0.68em;
+  color:var(--ink-dim);
+  display:block;
+  margin-bottom:7px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
 }
 .input-group input, .input-group select {
-width:100%;
-background: var(--panel-inset);
-border: 1px solid var(--line);
-border-radius: 9px;
-padding: 10px 14px;
-color:var(--ink);
-font-family: 'Inter', sans-serif;
-font-size:0.9em;
-outline:none;
-transition: all 0.25s;
+  width:100%;
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 10px 14px;
+  color:var(--ink);
+  font-family: 'Inter', sans-serif;
+  font-size:0.9em;
+  outline:none;
+  transition: all 0.25s;
 }
 .input-group input:focus, .input-group select:focus {
-border-color: var(--brass);
-box-shadow: 0 0 0 3px rgba(200,155,92,0.14);
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px rgba(200,155,92,0.14);
 }
 .btn-connect {
-width:100%;
-padding:12px;
-background: linear-gradient(180deg, var(--brass-bright), var(--brass));
-border:none;
-border-radius:11px;
-color:#1a1308;
-font-family: 'Space Grotesk', sans-serif;
-font-size:0.95em;
-font-weight:700;
-cursor:pointer;
-margin-top:4px;
-transition: all 0.25s;
-box-shadow: 0 4px 14px rgba(200,155,92,0.3);
-letter-spacing: 0.3px;
+  width:100%;
+  padding:12px;
+  background: linear-gradient(180deg, var(--brass-bright), var(--brass));
+  border:none;
+  border-radius:11px;
+  color:#1a1308;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size:0.95em;
+  font-weight:700;
+  cursor:pointer;
+  margin-top:4px;
+  transition: all 0.25s;
+  box-shadow: 0 4px 14px rgba(200,155,92,0.3);
+  letter-spacing: 0.3px;
 }
 .btn-connect:hover {
-transform: translateY(-2px);
-box-shadow: 0 6px 18px rgba(200,155,92,0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(200,155,92,0.45);
 }
 
 .voice-section { text-align:center; padding:26px 16px 12px; }
 .voice-hint {
-font-family: 'JetBrains Mono', monospace;
-font-size:0.72em;
-letter-spacing: 1px;
-text-transform: uppercase;
-color:var(--ink-dim);
-margin-bottom:18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size:0.72em;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color:var(--ink-dim);
+  margin-bottom:18px;
 }
 
 /* Mic Console Button — signature element */
 .mic-btn {
-width: 108px;
-height: 108px;
-border-radius: 50%;
-border: 3px solid var(--brass-dim);
-background: radial-gradient(circle at 34% 28%, #2a2c34, #15161b 72%);
-font-size: 2.3em;
-cursor: pointer;
-margin: 0 auto 18px;
-display: flex;
-align-items: center;
-justify-content: center;
-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-box-shadow: 0 6px 22px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.05), inset 0 -6px 12px rgba(0,0,0,0.45);
-position: relative;
-outline: none;
-color: var(--brass-bright);
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  border: 3px solid var(--brass-dim);
+  background: radial-gradient(circle at 34% 28%, #2a2c34, #15161b 72%);
+  font-size: 2.3em;
+  cursor: pointer;
+  margin: 0 auto 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 6px 22px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.05), inset 0 -6px 12px rgba(0,0,0,0.45);
+  position: relative;
+  outline: none;
+  color: var(--brass-bright);
 }
 .mic-btn:hover { transform: scale(1.04); border-color: var(--brass); }
 .mic-btn:disabled { background:#1b1c21; border-color:#2a2b30; box-shadow:none; cursor:not-allowed; opacity:0.55; color:#5a5c64; }
 
 @keyframes sonar-ping {
-0%   { transform: scale(1);   opacity: 0.65; }
-100% { transform: scale(1.55); opacity: 0; }
+  0%   { transform: scale(1);   opacity: 0.65; }
+  100% { transform: scale(1.55); opacity: 0; }
 }
 .mic-btn.state-listening,
 .mic-btn.state-user-speaking,
 .mic-btn.state-processing,
 .mic-btn.state-speaking,
 .mic-btn.state-waiting {
-border-color: var(--ring-color);
-box-shadow: 0 6px 24px var(--ring-shadow), inset 0 2px 4px rgba(255,255,255,0.06);
+  border-color: var(--ring-color);
+  box-shadow: 0 6px 24px var(--ring-shadow), inset 0 2px 4px rgba(255,255,255,0.06);
 }
 .mic-btn.state-listening::after,
 .mic-btn.state-user-speaking::after,
 .mic-btn.state-processing::after,
 .mic-btn.state-speaking::after,
 .mic-btn.state-waiting::after {
-content:'';
-position:absolute;
-inset:0;
-border-radius:50%;
-border: 2px solid var(--ring-color);
-animation: sonar-ping var(--ring-speed, 1.6s) ease-out infinite;
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  border: 2px solid var(--ring-color);
+  animation: sonar-ping var(--ring-speed, 1.6s) ease-out infinite;
 }
 .mic-btn.state-listening     { --ring-color: var(--signal-blue);   --ring-shadow: rgba(107,155,209,0.35); --ring-speed: 1.9s; }
 .mic-btn.state-user-speaking { --ring-color: var(--brass-bright);  --ring-shadow: rgba(232,194,133,0.4);  --ring-speed: 0.9s; }
@@ -230,27 +230,27 @@ animation: sonar-ping var(--ring-speed, 1.6s) ease-out infinite;
 .mic-btn.state-waiting       { --ring-color: var(--signal-red);    --ring-shadow: rgba(201,105,79,0.4);   --ring-speed: 1s; }
 
 .voice-status {
-font-family: 'Inter', sans-serif;
-font-size:0.95em;
-color: var(--brass-bright);
-min-height:28px;
-margin-bottom:12px;
-font-weight: 600;
-padding: 0 20px;
-text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size:0.95em;
+  color: var(--brass-bright);
+  min-height:28px;
+  margin-bottom:12px;
+  font-weight: 600;
+  padding: 0 20px;
+  text-align: center;
 }
 
 .chat-log {
-background: var(--panel-inset);
-border: 1px solid var(--line);
-border-radius: 14px;
-margin: 0 16px 16px;
-padding: 14px 16px;
-min-height: 140px;
-max-height: 220px;
-overflow-y: auto;
-box-shadow: inset 0 2px 10px rgba(0,0,0,0.55);
-font-family: 'JetBrains Mono', monospace;
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin: 0 16px 16px;
+  padding: 14px 16px;
+  min-height: 140px;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.55);
+  font-family: 'JetBrains Mono', monospace;
 }
 .chat-msg { font-size:0.82em; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.04); line-height:1.6; }
 .chat-msg:last-child { border-bottom:none; }
@@ -261,213 +261,213 @@ font-family: 'JetBrains Mono', monospace;
 .chat-msg .error  { color: var(--signal-red); font-weight: 500; }
 
 .device-grid {
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:12px;
-margin:0 16px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin:0 16px;
 }
 .device-card {
-background: var(--panel-raised);
-border: 1px solid var(--line);
-border-radius: 16px;
-padding: 20px 16px;
-text-align: center;
-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-cursor: pointer;
-box-shadow: 0 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.02);
-position: relative;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px 16px;
+  text-align: center;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.02);
+  position: relative;
 }
 .device-card:hover {
-transform: translateY(-3px);
-border-color: var(--brass-dim);
+  transform: translateY(-3px);
+  border-color: var(--brass-dim);
 }
 .device-card.on {
-border-color: var(--brass);
-box-shadow: 0 8px 22px rgba(200,155,92,0.18), inset 0 1px 0 rgba(255,255,255,0.03);
+  border-color: var(--brass);
+  box-shadow: 0 8px 22px rgba(200,155,92,0.18), inset 0 1px 0 rgba(255,255,255,0.03);
 }
 .device-card .led-dot {
-position: absolute;
-top: 14px; right: 14px;
-width: 7px; height: 7px;
-border-radius: 50%;
-background: #34363e;
-box-shadow: inset 0 1px 1px rgba(0,0,0,0.6);
-transition: all 0.3s;
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #34363e;
+  box-shadow: inset 0 1px 1px rgba(0,0,0,0.6);
+  transition: all 0.3s;
 }
 .device-card.on .led-dot {
-background: var(--signal-green);
-box-shadow: 0 0 7px var(--signal-green);
+  background: var(--signal-green);
+  box-shadow: 0 0 7px var(--signal-green);
 }
 .device-card .icon { font-size:2em; margin-bottom:10px; filter: grayscale(0.4) opacity(0.8); transition: filter 0.3s; }
 .device-card.on .icon { filter: none; }
 .device-card .name { font-size:0.88em; font-weight:600; margin-bottom:7px; letter-spacing: 0.3px; color: var(--ink); }
 .device-card .state {
-font-family: 'JetBrains Mono', monospace;
-font-size:0.7em; color:var(--ink-dim);
-background: var(--panel-inset);
-padding: 4px 12px;
-border-radius: 20px;
-display: inline-block;
-border: 1px solid var(--line);
+  font-family: 'JetBrains Mono', monospace;
+  font-size:0.7em; color:var(--ink-dim);
+  background: var(--panel-inset);
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+  border: 1px solid var(--line);
 }
 .device-card.on .state { color: var(--signal-green); background: rgba(95,191,141,0.08); border-color: rgba(95,191,141,0.25); }
 
 .commands-hint {
-background: var(--panel-raised);
-border: 1px solid var(--line);
-border-radius: 16px;
-margin: 16px 16px 0;
-padding: 18px;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin: 16px 16px 0;
+  padding: 18px;
 }
 .commands-hint h3 {
-font-family: 'JetBrains Mono', monospace;
-font-size:0.68em; color:var(--brass); margin-bottom:12px; font-weight: 600;
-text-transform: uppercase; letter-spacing: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size:0.68em; color:var(--brass); margin-bottom:12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 2px;
 }
 .cmd { font-size:0.8em; color:var(--ink-dim); padding:4px 0; line-height: 1.6; font-family:'Inter',sans-serif; }
 .cmd span { color:var(--ink); font-style:normal; font-weight: 500; font-family:'JetBrains Mono',monospace; }
 
 /* Tabbed Layout — physical toggle switch */
 .tab-container {
-display: flex;
-background: var(--panel-inset);
-border: 1px solid var(--line);
-border-radius: 14px;
-margin: 18px 16px 6px;
-padding: 4px;
-box-shadow: inset 0 2px 6px rgba(0,0,0,0.45);
+  display: flex;
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin: 18px 16px 6px;
+  padding: 4px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.45);
 }
 .tab-button {
-flex: 1;
-background: transparent;
-border: none;
-color: var(--ink-dim);
-font-family: 'Inter', sans-serif;
-padding: 12px;
-font-size: 0.86em;
-font-weight: 600;
-border-radius: 10px;
-cursor: pointer;
-transition: all 0.25s;
-letter-spacing: 0.3px;
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--ink-dim);
+  font-family: 'Inter', sans-serif;
+  padding: 12px;
+  font-size: 0.86em;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s;
+  letter-spacing: 0.3px;
 }
 .tab-button.active {
-background: linear-gradient(180deg, var(--brass-bright), var(--brass));
-color: #1a1308;
-box-shadow: 0 3px 10px rgba(200,155,92,0.3);
+  background: linear-gradient(180deg, var(--brass-bright), var(--brass));
+  color: #1a1308;
+  box-shadow: 0 3px 10px rgba(200,155,92,0.3);
 }
 .web-tab-content {
-animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @keyframes fadeIn {
-from { opacity: 0; transform: translateY(8px); }
-to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Form & Table — RFID ledger */
 .panel-title {
-font-family: 'JetBrains Mono', monospace;
-font-size: 0.78em;
-color: var(--brass);
-margin-bottom: 14px;
-font-weight: 600;
-letter-spacing: 0.5px;
-text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78em;
+  color: var(--brass);
+  margin-bottom: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 .flex-row {
-display: flex;
-gap: 8px;
-margin-bottom: 12px;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 .flex-row input {
-flex: 1;
-background: var(--panel-inset);
-border: 1px solid var(--line);
-border-radius: 9px;
-padding: 9px 12px;
-color: var(--ink);
-font-family: 'Inter', sans-serif;
-font-size: 0.88em;
-outline: none;
-transition: all 0.25s;
+  flex: 1;
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 9px 12px;
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.88em;
+  outline: none;
+  transition: all 0.25s;
 }
 .flex-row input:focus {
-border-color: var(--brass);
-box-shadow: 0 0 0 3px rgba(200,155,92,0.14);
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px rgba(200,155,92,0.14);
 }
 .flex-row button {
-background: linear-gradient(180deg, var(--brass-bright), var(--brass));
-border: none;
-border-radius: 9px;
-color: #1a1308;
-padding: 9px 18px;
-font-family: 'Space Grotesk', sans-serif;
-font-size: 0.88em;
-font-weight: 700;
-cursor: pointer;
+  background: linear-gradient(180deg, var(--brass-bright), var(--brass));
+  border: none;
+  border-radius: 9px;
+  color: #1a1308;
+  padding: 9px 18px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.88em;
+  font-weight: 700;
+  cursor: pointer;
 }
 .card-table-container {
-overflow-x: auto;
-margin-top: 10px;
+  overflow-x: auto;
+  margin-top: 10px;
 }
 .card-table {
-width: 100%;
-border-collapse: collapse;
-font-size: 0.8em;
-text-align: left;
-font-family: 'Inter', sans-serif;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8em;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
 }
 .card-table th, .card-table td {
-padding: 11px 10px;
-border-bottom: 1px solid var(--line);
+  padding: 11px 10px;
+  border-bottom: 1px solid var(--line);
 }
 .card-table th {
-font-family: 'JetBrains Mono', monospace;
-color: var(--brass);
-font-weight: 600;
-font-size: 0.85em;
-letter-spacing: 0.5px;
-text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--brass);
+  font-weight: 600;
+  font-size: 0.85em;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 .card-table tr:hover {
-background: rgba(255,255,255,0.02);
+  background: rgba(255,255,255,0.02);
 }
 .card-table code {
-font-family: 'JetBrains Mono', monospace;
-background: var(--panel-inset);
-border: 1px solid var(--line);
-padding: 2px 7px;
-border-radius: 5px;
-color: var(--brass-bright);
-font-size: 0.95em;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  padding: 2px 7px;
+  border-radius: 5px;
+  color: var(--brass-bright);
+  font-size: 0.95em;
 }
 .btn-danger {
-background: var(--signal-red);
-border: none;
-color: white;
-padding: 5px 10px;
-border-radius: 6px;
-cursor: pointer;
-font-size: 0.8em;
-font-weight: 600;
+  background: var(--signal-red);
+  border: none;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8em;
+  font-weight: 600;
 }
 .btn-danger:hover {
-background: #b35840;
+  background: #b35840;
 }
 .badge {
-padding: 4px 8px;
-border-radius: 6px;
-font-size: 0.82em;
-font-weight: 600;
-font-family: 'JetBrains Mono', monospace;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.82em;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
 }
 .badge.allowed {
-background: rgba(95,191,141,0.12);
-color: var(--signal-green);
+  background: rgba(95,191,141,0.12);
+  color: var(--signal-green);
 }
 .badge.denied {
-background: rgba(201,105,79,0.12);
-color: var(--signal-red);
+  background: rgba(201,105,79,0.12);
+  color: var(--signal-red);
 }
 
 </style>
@@ -475,94 +475,94 @@ color: var(--signal-red);
 <body>
 
 <div class="header">
-<div class="eyebrow">Trợ lý giọng nói · Nhà thông minh</div>
-<h1>JARVIS<span class="accent">.</span></h1>
-<div class="status-bar">
-<div class="dot" id="mqttDot"></div>
-<span id="mqttStatus">Chưa kết nối</span>
-</div>
+  <div class="eyebrow">Trợ lý giọng nói · Nhà thông minh</div>
+  <h1>JARVIS<span class="accent">.</span></h1>
+  <div class="status-bar">
+    <div class="dot" id="mqttDot"></div>
+    <span id="mqttStatus">Chưa kết nối</span>
+  </div>
 </div>
 
 <!-- Tab Switcher -->
 <div class="tab-container">
-<button class="tab-button active" id="btn-tab-control" onclick="switchWebTab('control')">🎛️ Điều khiển</button>
-<button class="tab-button" id="btn-tab-rfid" onclick="switchWebTab('rfid')">🪪 Quản lý Thẻ</button>
+  <button class="tab-button active" id="btn-tab-control" onclick="switchWebTab('control')">🎛️ Điều khiển</button>
+  <button class="tab-button" id="btn-tab-rfid" onclick="switchWebTab('rfid')">🪪 Quản lý Thẻ</button>
 </div>
 
 <!-- Tab 1: Điều khiển & AI -->
 <div id="tab-control" class="web-tab-content">
-<div class="setup-panel">
-<h3>Cấu hình</h3>
-<div class="input-group">
-<label>Groq API Key</label>
-<input type="password" id="apiKey" placeholder="gsk_..." />
-</div>
-<div class="input-group">
-<label>Mật khẩu HiveMQ</label>
-<input type="password" id="mqttPass" placeholder="Mật khẩu HiveMQ của bạn" />
-</div>
-<div class="input-group">
-<label>Giọng Tiếng Việt (Vietnamese Voice)</label>
-<select id="viVoiceSelect" onchange="saveSelectedVoices()"></select>
-</div>
-<div class="input-group">
-<label>Giọng Tiếng Anh (English Voice)</label>
-<select id="enVoiceSelect" onchange="saveSelectedVoices()"></select>
-</div>
-<button class="btn-connect" onclick="connect()">🔌 Kết nối</button>
-</div>
+  <div class="setup-panel">
+    <h3>Cấu hình</h3>
+    <div class="input-group">
+      <label>Groq API Key</label>
+      <input type="password" id="apiKey" placeholder="gsk_..." />
+    </div>
+    <div class="input-group">
+      <label>Mật khẩu HiveMQ</label>
+      <input type="password" id="mqttPass" placeholder="Mật khẩu HiveMQ của bạn" />
+    </div>
+    <div class="input-group">
+      <label>Giọng Tiếng Việt (Vietnamese Voice)</label>
+      <select id="viVoiceSelect" onchange="saveSelectedVoices()"></select>
+    </div>
+    <div class="input-group">
+      <label>Giọng Tiếng Anh (English Voice)</label>
+      <select id="enVoiceSelect" onchange="saveSelectedVoices()"></select>
+    </div>
+    <button class="btn-connect" onclick="connect()">🔌 Kết nối</button>
+  </div>
 
-<div class="voice-section">
-<p class="voice-hint">Nhấn mic và nói lệnh điều khiển</p>
-<button class="mic-btn" id="micBtn" onclick="startVoice()" disabled>🎤</button>
-<div class="voice-status" id="voiceStatus">Chưa kết nối MQTT</div>
-</div>
+  <div class="voice-section">
+    <p class="voice-hint">Nhấn mic và nói lệnh điều khiển</p>
+    <button class="mic-btn" id="micBtn" onclick="startVoice()" disabled>🎤</button>
+    <div class="voice-status" id="voiceStatus">Chưa kết nối MQTT</div>
+  </div>
 
-<div class="chat-log" id="chatLog">
-<div class="chat-msg"><span class="time">--:--</span><span class="ai">Nhật ký lệnh sẽ hiển thị ở đây...</span></div>
-</div>
+  <div class="chat-log" id="chatLog">
+    <div class="chat-msg"><span class="time">--:--</span><span class="ai">Nhật ký lệnh sẽ hiển thị ở đây...</span></div>
+  </div>
 
-<div class="device-grid">
-<div class="device-card" id="card-light1" onclick="manualToggle('light1')">
-<span class="led-dot"></span>
-<div class="icon">💡</div>
-<div class="name">Đèn 1</div>
-<div class="state" id="state-light1">Tắt</div>
-</div>
-<div class="device-card" id="card-light2" onclick="manualToggle('light2')">
-<span class="led-dot"></span>
-<div class="icon">💡</div>
-<div class="name">Đèn 2</div>
-<div class="state" id="state-light2">Tắt</div>
-</div>
-<div class="device-card" id="card-fan" onclick="manualToggle('fan')">
-<span class="led-dot"></span>
-<div class="icon">🌀</div>
-<div class="name">Quạt 1</div>
-<div class="state" id="state-fan">Tắt</div>
-</div>
-<div class="device-card" id="card-fan2" onclick="manualToggle('fan2')">
-<span class="led-dot"></span>
-<div class="icon">🌀</div>
-<div class="name">Quạt 2</div>
-<div class="state" id="state-fan2">Tắt</div>
-</div>
-<div class="device-card" id="card-door" onclick="manualToggle('door')">
-<span class="led-dot"></span>
-<div class="icon">🚪</div>
-<div class="name">Cửa</div>
-<div class="state" id="state-door">Đóng</div>
-</div>
-<div class="device-card" style="cursor:default;">
-<div class="icon">🌡️</div>
-<div class="name">Cảm biến</div>
-<div class="state" id="state-temp">-- °C / -- %</div>
-</div>
-<div class="device-card" style="cursor:default;" id="card-gas">
-<div class="icon">⚠️</div>
-<div class="name">Khí Gas</div>
-<div class="state" id="state-gas">-- %</div>
-</div>
+  <div class="device-grid">
+    <div class="device-card" id="card-light1" onclick="manualToggle('light1')">
+      <span class="led-dot"></span>
+      <div class="icon">💡</div>
+      <div class="name">Đèn 1</div>
+      <div class="state" id="state-light1">Tắt</div>
+    </div>
+    <div class="device-card" id="card-light2" onclick="manualToggle('light2')">
+      <span class="led-dot"></span>
+      <div class="icon">💡</div>
+      <div class="name">Đèn 2</div>
+      <div class="state" id="state-light2">Tắt</div>
+    </div>
+    <div class="device-card" id="card-fan" onclick="manualToggle('fan')">
+      <span class="led-dot"></span>
+      <div class="icon">🌀</div>
+      <div class="name">Quạt 1</div>
+      <div class="state" id="state-fan">Tắt</div>
+    </div>
+    <div class="device-card" id="card-fan2" onclick="manualToggle('fan2')">
+      <span class="led-dot"></span>
+      <div class="icon">🌀</div>
+      <div class="name">Quạt 2</div>
+      <div class="state" id="state-fan2">Tắt</div>
+    </div>
+    <div class="device-card" id="card-door" onclick="manualToggle('door')">
+      <span class="led-dot"></span>
+      <div class="icon">🚪</div>
+      <div class="name">Cửa</div>
+      <div class="state" id="state-door">Đóng</div>
+    </div>
+    <div class="device-card" style="cursor:default;">
+      <div class="icon">🌡️</div>
+      <div class="name">Cảm biến</div>
+      <div class="state" id="state-temp">-- °C / -- %</div>
+    </div>
+    <div class="device-card" style="cursor:default;" id="card-gas">
+      <div class="icon">⚠️</div>
+      <div class="name">Khí Gas</div>
+      <div class="state" id="state-gas">-- %</div>
+    </div>
     <!-- Nút chế độ Thủ công / Tự động -->
     <div class="device-card" id="card-automode" onclick="toggleAutoMode()" style="grid-column: 1 / -1; flex-direction: row; align-items:center; gap:14px; justify-content:center; padding: 14px 20px;">
       <span class="led-dot" id="led-automode" style="background: var(--signal-green); box-shadow: 0 0 8px var(--signal-green);"></span>
@@ -572,79 +572,79 @@ color: var(--signal-red);
       </div>
       <div style="margin-left:auto; font-size:0.78em; color:var(--ink-dim); font-family:'JetBrains Mono',monospace; text-align:right;">Nhấn để đổi</div>
     </div>
-</div>
+  </div>
 
-<!-- Gửi lời nhắc lên LCD -->
-<div class="setup-panel" style="margin-top: 16px;">
-<div class="panel-title">📝 Gửi lời nhắc lên LCD 2004</div>
-<div class="flex-row" style="margin-bottom:0;">
-<input type="text" id="reminderInput" placeholder="Nhập lời nhắc không dấu (Ví dụ: mua sua, tat quat...)" />
-<button onclick="sendReminder()">Gửi</button>
-</div>
-</div>
+  <!-- Gửi lời nhắc lên LCD -->
+  <div class="setup-panel" style="margin-top: 16px;">
+    <div class="panel-title">📝 Gửi lời nhắc lên LCD 2004</div>
+    <div class="flex-row" style="margin-bottom:0;">
+      <input type="text" id="reminderInput" placeholder="Nhập lời nhắc không dấu (Ví dụ: mua sua, tat quat...)" />
+      <button onclick="sendReminder()">Gửi</button>
+    </div>
+  </div>
 
-<div class="commands-hint">
-<h3>📋 Lệnh mẫu</h3>
-<div class="cmd">• <span>"trời nóng quá"</span> / <span>"oi bức thế"</span></div>
-<div class="cmd">• <span>"bật đèn lên"</span> / <span>"tắt hết đi"</span></div>
-<div class="cmd">• <span>"đi ngủ đây"</span> / <span>"về nhà rồi"</span></div>
-<div class="cmd">• <span>"tối quá"</span> / <span>"chói mắt quá"</span></div>
-<div class="cmd">• <span>"turn on the fan"</span> / <span>"lights off"</span></div>
-<div class="cmd">• <span>"chuyển sang màn hình cảm biến"</span> / <span>"về màn hình chính"</span></div>
-</div>
+  <div class="commands-hint">
+    <h3>📋 Lệnh mẫu</h3>
+    <div class="cmd">• <span>"trời nóng quá"</span> / <span>"oi bức thế"</span></div>
+    <div class="cmd">• <span>"bật đèn lên"</span> / <span>"tắt hết đi"</span></div>
+    <div class="cmd">• <span>"đi ngủ đây"</span> / <span>"về nhà rồi"</span></div>
+    <div class="cmd">• <span>"tối quá"</span> / <span>"chói mắt quá"</span></div>
+    <div class="cmd">• <span>"turn on the fan"</span> / <span>"lights off"</span></div>
+    <div class="cmd">• <span>"chuyển sang màn hình cảm biến"</span> / <span>"về màn hình chính"</span></div>
+  </div>
 </div>
 
 <!-- Tab 2: Quản lý Thẻ RFID & Lịch sử -->
 <div id="tab-rfid" class="web-tab-content" style="display:none;">
 
-<!-- ── Đăng ký thẻ: whitelist + blacklist chung một form ── -->
-<div class="setup-panel">
-<div class="panel-title">🪪 Đăng ký / Cấm thẻ</div>
-<div class="flex-row" style="flex-wrap:wrap; gap:8px;">
-<input type="text" id="newCardUid" placeholder="UID thẻ (tự điền khi quẹt thẻ lạ)" style="min-width:140px;" />
-<input type="text" id="newCardName" placeholder="Tên / Ghi chú (không dấu)" style="min-width:110px;" />
-</div>
-<div class="flex-row" style="margin-bottom:0; gap:8px;">
-<button onclick="addNewCard('allow')" style="flex:1; background:linear-gradient(180deg,#6dbf95,#3a9e6a); color:#0c1a10;">✅ Cho phép</button>
-<button onclick="addNewCard('deny')"  style="flex:1; background:linear-gradient(180deg,#c9694f,#a04030); color:#fff;">🚫 Cấm vào</button>
-</div>
-<p style="font-size:0.7em; color:var(--ink-dim); font-family:'Inter',sans-serif; margin-top:8px;">* Quẹt thẻ lạ bất kỳ để tự động điền UID. Chọn Cho phép hoặc Cấm vào.</p>
-</div>
+  <!-- ── Đăng ký thẻ: whitelist + blacklist chung một form ── -->
+  <div class="setup-panel">
+    <div class="panel-title">🪪 Đăng ký / Cấm thẻ</div>
+    <div class="flex-row" style="flex-wrap:wrap; gap:8px;">
+      <input type="text" id="newCardUid" placeholder="UID thẻ (tự điền khi quẹt thẻ lạ)" style="min-width:140px;" />
+      <input type="text" id="newCardName" placeholder="Tên / Ghi chú (không dấu)" style="min-width:110px;" />
+    </div>
+    <div class="flex-row" style="margin-bottom:0; gap:8px;">
+      <button onclick="addNewCard('allow')" style="flex:1; background:linear-gradient(180deg,#6dbf95,#3a9e6a); color:#0c1a10;">✅ Cho phép</button>
+      <button onclick="addNewCard('deny')"  style="flex:1; background:linear-gradient(180deg,#c9694f,#a04030); color:#fff;">🚫 Cấm vào</button>
+    </div>
+    <p style="font-size:0.7em; color:var(--ink-dim); font-family:'Inter',sans-serif; margin-top:8px;">* Quẹt thẻ lạ bất kỳ để tự động điền UID. Chọn Cho phép hoặc Cấm vào.</p>
+  </div>
 
-<!-- ── Danh sách whitelist ── -->
-<div class="setup-panel">
-<div class="panel-title">✅ Thẻ được phép vào</div>
-<div class="card-table-container">
-<table class="card-table">
-<thead><tr><th>UID</th><th>Tên</th><th>Hành động</th></tr></thead>
-<tbody id="rfidWhitelistBody"></tbody>
-</table>
-</div>
-</div>
+  <!-- ── Danh sách whitelist ── -->
+  <div class="setup-panel">
+    <div class="panel-title">✅ Thẻ được phép vào</div>
+    <div class="card-table-container">
+      <table class="card-table">
+        <thead><tr><th>UID</th><th>Tên</th><th>Hành động</th></tr></thead>
+        <tbody id="rfidWhitelistBody"></tbody>
+      </table>
+    </div>
+  </div>
 
-<!-- ── Danh sách blacklist ── -->
-<div class="setup-panel" style="border-color: rgba(201,105,79,0.25);">
-<div class="panel-title" style="color:var(--signal-red);">🚫 Thẻ bị cấm</div>
-<div class="card-table-container">
-<table class="card-table">
-<thead><tr><th>UID</th><th>Ghi chú</th><th>Hành động</th></tr></thead>
-<tbody id="rfidBlacklistBody"></tbody>
-</table>
-</div>
-</div>
+  <!-- ── Danh sách blacklist ── -->
+  <div class="setup-panel" style="border-color: rgba(201,105,79,0.25);">
+    <div class="panel-title" style="color:var(--signal-red);">🚫 Thẻ bị cấm</div>
+    <div class="card-table-container">
+      <table class="card-table">
+        <thead><tr><th>UID</th><th>Ghi chú</th><th>Hành động</th></tr></thead>
+        <tbody id="rfidBlacklistBody"></tbody>
+      </table>
+    </div>
+  </div>
 
-<!-- ── Lịch sử ra vào ── -->
-<div class="setup-panel">
-<div class="panel-title">📜 Lịch sử ra vào cửa</div>
-<div class="card-table-container">
-<table class="card-table">
-<thead>
-<tr><th>Thời gian</th><th>UID</th><th>Tên</th><th>Kết quả</th></tr>
-</thead>
-<tbody id="rfidLogsBody"></tbody>
-</table>
-</div>
-</div>
+  <!-- ── Lịch sử ra vào ── -->
+  <div class="setup-panel">
+    <div class="panel-title">📜 Lịch sử ra vào cửa</div>
+    <div class="card-table-container">
+      <table class="card-table">
+        <thead>
+          <tr><th>Thời gian</th><th>UID</th><th>Tên</th><th>Kết quả</th></tr>
+        </thead>
+        <tbody id="rfidLogsBody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -659,131 +659,129 @@ const MQTT_STATUS   = 'smarthome/nhacuatoi/status';
 let mqttClient = null;
 let isListening = false;
 let isProcessing = false;
-const deviceStates = { light1:false, light2:false, fan:false, fan2:false, door:false };
 const deviceStates = { light1:false, light2:false, fan:false, fan2:false, door:false, auto_mode:true };
 let currentTemp = null;
 let currentHumi = null;
 
 function connect() {
-const apiKey  = document.getElementById('apiKey').value.trim();
-const mqttPass = document.getElementById('mqttPass').value.trim();
-if (!apiKey)   { alert('Nhập Groq API Key!'); return; }
-if (!mqttPass) { alert('Nhập mật khẩu HiveMQ!'); return; }
+  const apiKey  = document.getElementById('apiKey').value.trim();
+  const mqttPass = document.getElementById('mqttPass').value.trim();
+  if (!apiKey)   { alert('Nhập Groq API Key!'); return; }
+  if (!mqttPass) { alert('Nhập mật khẩu HiveMQ!'); return; }
 
-localStorage.setItem('sh_groqkey', apiKey);
-localStorage.setItem('sh_mqttpass', mqttPass);
-setStatus('Đang kết nối...', 'yellow');
+  localStorage.setItem('sh_groqkey', apiKey);
+  localStorage.setItem('sh_mqttpass', mqttPass);
+  setStatus('Đang kết nối...', 'yellow');
 
-if (mqttClient) { mqttClient.end(true); mqttClient = null; }
+  if (mqttClient) { mqttClient.end(true); mqttClient = null; }
 
-const clientId = 'webapp_' + Math.random().toString(16).slice(2,8);
+  const clientId = 'webapp_' + Math.random().toString(16).slice(2,8);
   console.log('[MQTT] Đang kết nối tới wss://' + MQTT_HOST + ':' + MQTT_PORT + '/mqtt');
   console.log('[MQTT] user=' + MQTT_USER + ' pass=' + mqttPass.substring(0,4) + '...');
-mqttClient = mqtt.connect('wss://' + MQTT_HOST + ':' + MQTT_PORT + '/mqtt', {
-clientId,
-username: MQTT_USER,
-password: mqttPass,
-clean: true,
-reconnectPeriod: 5000,
+  mqttClient = mqtt.connect('wss://' + MQTT_HOST + ':' + MQTT_PORT + '/mqtt', {
+    clientId,
+    username: MQTT_USER,
+    password: mqttPass,
+    clean: true,
+    reconnectPeriod: 5000,
     protocolVersion: 4,   // MQTT 3.1.1 — tương thích HiveMQ Cloud
     keepalive: 60,
     connectTimeout: 10000,
-});
+  });
 
-mqttClient.on('connect', () => {
-setStatus('Đã kết nối ✓', 'green');
-document.getElementById('micBtn').disabled = false;
-document.getElementById('voiceStatus').textContent = 'Nhấn mic để ra lệnh';
-mqttClient.subscribe(MQTT_STATUS);
-addLog('ai', '✅ Kết nối HiveMQ Cloud thành công!');
-// Tự động đồng bộ danh sách thẻ khi kết nối
-syncListsToEsp32();
-});
+  mqttClient.on('connect', () => {
+    setStatus('Đã kết nối ✓', 'green');
+    document.getElementById('micBtn').disabled = false;
+    document.getElementById('voiceStatus').textContent = 'Nhấn mic để ra lệnh';
+    mqttClient.subscribe(MQTT_STATUS);
+    addLog('ai', '✅ Kết nối HiveMQ Cloud thành công!');
+    // Tự động đồng bộ danh sách thẻ khi kết nối
+    syncListsToEsp32();
+  });
 
-mqttClient.on('message', (topic, message) => {
-try {
-const d = JSON.parse(message.toString());
+  mqttClient.on('message', (topic, message) => {
+    try {
+      const d = JSON.parse(message.toString());
 
-// ── Relay states (cả S3 lẫn slave đều publish) ──────────────────
-if (d.light1 !== undefined) updateCard('light1', d.light1);
-if (d.light2 !== undefined) updateCard('light2', d.light2);
-if (d.fan    !== undefined) updateCard('fan',    d.fan);
-if (d.fan2   !== undefined) updateCard('fan2',   d.fan2);
-if (d.door   !== undefined) updateCard('door',   d.door);
+      // ── Relay states (cả S3 lẫn slave đều publish) ──────────────────
+      if (d.light1 !== undefined) updateCard('light1', d.light1);
+      if (d.light2 !== undefined) updateCard('light2', d.light2);
+      if (d.fan    !== undefined) updateCard('fan',    d.fan);
+      if (d.fan2   !== undefined) updateCard('fan2',   d.fan2);
+      if (d.door   !== undefined) updateCard('door',   d.door);
 
-      // ── Nhiệt độ / Độ ẩm — chỉ từ S3 (slave không có DHT) ──────────
       // ── Nhiệt độ / Độ ẩm ──────────────────────────────────────────
-if (d.temp !== undefined) {
-currentTemp = parseFloat(d.temp).toFixed(1);
-currentHumi = parseFloat(d.humi).toFixed(1);
-document.getElementById('state-temp').textContent = currentTemp + '°C / ' + currentHumi + '%';
-}
+      if (d.temp !== undefined) {
+        currentTemp = parseFloat(d.temp).toFixed(1);
+        currentHumi = parseFloat(d.humi).toFixed(1);
+        document.getElementById('state-temp').textContent = currentTemp + '°C / ' + currentHumi + '%';
+      }
 
       // ── Chế độ Tự động / Thủ công ────────────────────────────────
       if (d.auto_mode !== undefined) updateAutoModeUI(d.auto_mode);
 
-// ── Khí Gas ──────────────────────────────────────────────────
-// FIX: code cũ có điều kiện `d.gas !== undefined && d.temp === undefined`.
-// Nhưng ESP32-S3 luôn gửi "temp" VÀ "gas" CHUNG 1 gói JSON (cùng
-// publishStatus()), nên d.temp không bao giờ undefined khi có gas
-// → card Gas mãi mãi không cập nhật. Bỏ điều kiện thừa đó.
-if (d.gas !== undefined) {
-const gasCard = document.getElementById('card-gas');
-if (d.gas > 40) {
-gasCard.classList.add('on');
-document.getElementById('state-gas').style.color = 'var(--signal-red)';
-document.getElementById('state-gas').textContent = d.gas + '% ⚠️ Cảnh báo!';
-} else {
-gasCard.classList.remove('on');
-document.getElementById('state-gas').style.color = '';
-document.getElementById('state-gas').textContent = d.gas + '%';
-}
-}
+      // ── Khí Gas ──────────────────────────────────────────────────
+      // FIX: code cũ có điều kiện `d.gas !== undefined && d.temp === undefined`.
+      // Nhưng ESP32-S3 luôn gửi "temp" VÀ "gas" CHUNG 1 gói JSON (cùng
+      // publishStatus()), nên d.temp không bao giờ undefined khi có gas
+      // → card Gas mãi mãi không cập nhật. Bỏ điều kiện thừa đó.
+      if (d.gas !== undefined) {
+        const gasCard = document.getElementById('card-gas');
+        if (d.gas > 40) {
+          gasCard.classList.add('on');
+          document.getElementById('state-gas').style.color = 'var(--signal-red)';
+          document.getElementById('state-gas').textContent = d.gas + '% ⚠️ Cảnh báo!';
+        } else {
+          gasCard.classList.remove('on');
+          document.getElementById('state-gas').style.color = '';
+          document.getElementById('state-gas').textContent = d.gas + '%';
+        }
+      }
+      
+      // Xử lý thông điệp quẹt thẻ RFID gửi từ ESP32
+      if (d.type === 'rfid') {
+        const whiteEntry = rfidWhitelist.find(c => c.uid === d.uid);
+        const blackEntry = rfidBlacklist.find(c => c.uid === d.uid);
 
-// Xử lý thông điệp quẹt thẻ RFID gửi từ ESP32
-if (d.type === 'rfid') {
-const whiteEntry = rfidWhitelist.find(c => c.uid === d.uid);
-const blackEntry = rfidBlacklist.find(c => c.uid === d.uid);
+        // Ghi lịch sử với trường result rõ ràng hơn
+        const nowStr = new Date().toLocaleTimeString('vi', {hour:'2-digit',minute:'2-digit',second:'2-digit'})
+                     + ' ' + new Date().toLocaleDateString('vi');
+        let result, cardName;
+        if (whiteEntry)      { result = 'allowed'; cardName = whiteEntry.name; }
+        else if (blackEntry) { result = 'banned';  cardName = blackEntry.name; }
+        else                 { result = 'unknown'; cardName = ''; }
 
-// Ghi lịch sử với trường result rõ ràng hơn
-const nowStr = new Date().toLocaleTimeString('vi', {hour:'2-digit',minute:'2-digit',second:'2-digit'})
-+ ' ' + new Date().toLocaleDateString('vi');
-let result, cardName;
-if (whiteEntry)      { result = 'allowed'; cardName = whiteEntry.name; }
-else if (blackEntry) { result = 'banned';  cardName = blackEntry.name; }
-else                 { result = 'unknown'; cardName = ''; }
+        rfidLogs.push({ time: nowStr, uid: d.uid, name: cardName, result });
+        if (rfidLogs.length > 100) rfidLogs.shift();
+        saveLogs();
 
-rfidLogs.push({ time: nowStr, uid: d.uid, name: cardName, result });
-if (rfidLogs.length > 100) rfidLogs.shift();
-saveLogs();
+        // Tự điền UID vào form nếu chưa đăng ký
+        if (!whiteEntry && !blackEntry) {
+          document.getElementById('newCardUid').value = d.uid;
+        }
 
-// Tự điền UID vào form nếu chưa đăng ký
-if (!whiteEntry && !blackEntry) {
-document.getElementById('newCardUid').value = d.uid;
-}
+        if (result === 'allowed') {
+          addLog('action', `🚪 Mở cửa: [${cardName}] (${d.uid})`);
+          mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'rfid_name', action: cardName }), { qos: 1 });
+        } else if (result === 'banned') {
+          addLog('error', `🚫 Thẻ bị cấm: [${cardName}] (${d.uid}) cố vào!`);
+          // Có thể gửi tín hiệu cảnh báo về ESP32 ở đây nếu cần
+        } else {
+          addLog('error', `❓ Thẻ lạ: (${d.uid}) — Quẹt thẻ lạ, chọn tab Quản lý Thẻ để đăng ký.`);
+        }
+      }
+    } catch(e) {}
+  });
 
-if (result === 'allowed') {
-addLog('action', `🚪 Mở cửa: [${cardName}] (${d.uid})`);
-mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'rfid_name', action: cardName }), { qos: 1 });
-} else if (result === 'banned') {
-addLog('error', `🚫 Thẻ bị cấm: [${cardName}] (${d.uid}) cố vào!`);
-// Có thể gửi tín hiệu cảnh báo về ESP32 ở đây nếu cần
-} else {
-addLog('error', `❓ Thẻ lạ: (${d.uid}) — Quẹt thẻ lạ, chọn tab Quản lý Thẻ để đăng ký.`);
-}
-}
-} catch(e) {}
-});
+  mqttClient.on('error', (err) => {
+    setStatus('Lỗi: ' + err.message, '');
+    addLog('error', '❌ ' + err.message);
+  });
 
-mqttClient.on('error', (err) => {
-setStatus('Lỗi: ' + err.message, '');
-addLog('error', '❌ ' + err.message);
-});
-
-mqttClient.on('offline', () => {
-setStatus('Mất kết nối - đang kết nối lại...', 'yellow');
-document.getElementById('micBtn').disabled = true;
-});
+  mqttClient.on('offline', () => {
+    setStatus('Mất kết nối - đang kết nối lại...', 'yellow');
+    document.getElementById('micBtn').disabled = true;
+  });
 }
 
 // ===== HỆ THỐNG GIAO TIẾP GIỌNG NÓI LIÊN TỤC =====
@@ -804,189 +802,189 @@ let recognition = null;
 let recRestartTimer = null;
 
 function initRecognition() {
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (!SR) {
-addLog('error', '⚠️ Trình duyệt không hỗ trợ Speech Recognition. Dùng Chrome/Safari.');
-return null;
-}
-const rec = new SR();
-rec.continuous      = true;
-rec.interimResults  = true;
-// Để trống → Chrome tự detect ngôn ngữ (Việt + Anh cùng phiên)
-// Fallback: 'vi-VN' nếu auto detect không hoạt động trên thiết bị cũ
-rec.lang            = '';
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    addLog('error', '⚠️ Trình duyệt không hỗ trợ Speech Recognition. Dùng Chrome/Safari.');
+    return null;
+  }
+  const rec = new SR();
+  rec.continuous      = true;
+  rec.interimResults  = true;
+  // Để trống → Chrome tự detect ngôn ngữ (Việt + Anh cùng phiên)
+  // Fallback: 'vi-VN' nếu auto detect không hoạt động trên thiết bị cũ
+  rec.lang            = '';
 
-rec.onstart = () => console.log('[STT] started');
+  rec.onstart = () => console.log('[STT] started');
 
-rec.onresult = (event) => {
-let interim = '';
-let final_  = '';
-for (let i = event.resultIndex; i < event.results.length; i++) {
-const t = event.results[i][0].transcript;
-event.results[i].isFinal ? (final_ += t) : (interim += t);
-}
+  rec.onresult = (event) => {
+    let interim = '';
+    let final_  = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      event.results[i].isFinal ? (final_ += t) : (interim += t);
+    }
 
-// Bất kỳ tín hiệu nào từ mic → hủy đếm ngược chờ
-if (interim || final_) {
-if (silenceTimer) { clearInterval(silenceTimer); silenceTimer = null; }
+    // Bất kỳ tín hiệu nào từ mic → hủy đếm ngược chờ
+    if (interim || final_) {
+      if (silenceTimer) { clearInterval(silenceTimer); silenceTimer = null; }
 
-// ── BARGE-IN: nếu AI đang đọc thì dừng ngay ──
-if (window.speechSynthesis && window.speechSynthesis.speaking) {
-window.speechSynthesis.cancel();
-playSound('interrupt');
-}
-}
+      // ── BARGE-IN: nếu AI đang đọc thì dừng ngay ──
+      if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        playSound('interrupt');
+      }
+    }
 
-if (interim) {
-setLiveState('USER_SPEAKING');
-document.getElementById('voiceStatus').innerHTML =
-`🎙️ <span style="color:#c084fc;">"${interim}"</span>`;
-}
+    if (interim) {
+      setLiveState('USER_SPEAKING');
+      document.getElementById('voiceStatus').innerHTML =
+        `🎙️ <span style="color:#c084fc;">"${interim}"</span>`;
+    }
 
-if (final_.trim()) {
-setLiveState('PROCESSING');
-playSound('think');
-processLiveSpeech(final_.trim());
-}
-};
+    if (final_.trim()) {
+      setLiveState('PROCESSING');
+      playSound('think');
+      processLiveSpeech(final_.trim());
+    }
+  };
 
-rec.onerror = (e) => {
-// 'no-speech' và 'aborted' là bình thường; các lỗi khác thì khởi động lại
-if (e.error !== 'no-speech' && e.error !== 'aborted' && isConversationActive) {
-scheduleRecRestart();
-}
-};
+  rec.onerror = (e) => {
+    // 'no-speech' và 'aborted' là bình thường; các lỗi khác thì khởi động lại
+    if (e.error !== 'no-speech' && e.error !== 'aborted' && isConversationActive) {
+      scheduleRecRestart();
+    }
+  };
 
-rec.onend = () => {
-// Web Speech API tự dừng sau ~60s hoặc khi có lỗi — khởi động lại ngay
-if (isConversationActive) scheduleRecRestart();
-};
+  rec.onend = () => {
+    // Web Speech API tự dừng sau ~60s hoặc khi có lỗi — khởi động lại ngay
+    if (isConversationActive) scheduleRecRestart();
+  };
 
-return rec;
+  return rec;
 }
 
 function scheduleRecRestart() {
-clearTimeout(recRestartTimer);
-recRestartTimer = setTimeout(() => {
-if (!isConversationActive || !recognition) return;
-try { recognition.start(); } catch(e) { /* đã running */ }
-}, 150);
+  clearTimeout(recRestartTimer);
+  recRestartTimer = setTimeout(() => {
+    if (!isConversationActive || !recognition) return;
+    try { recognition.start(); } catch(e) { /* đã running */ }
+  }, 150);
 }
 
 function startLiveConversation() {
-isConversationActive = true;
+  isConversationActive = true;
 
-// Unlock AudioContext (cần sau gesture người dùng)
-if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-if (audioCtx.state === 'suspended') audioCtx.resume();
+  // Unlock AudioContext (cần sau gesture người dùng)
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 
-// Unlock TTS trên iOS/Android (cần gọi trong gesture handler)
-if (window.speechSynthesis) {
-window.speechSynthesis.cancel();
-const warmup = new SpeechSynthesisUtterance('');
-window.speechSynthesis.speak(warmup);
-}
+  // Unlock TTS trên iOS/Android (cần gọi trong gesture handler)
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+    const warmup = new SpeechSynthesisUtterance('');
+    window.speechSynthesis.speak(warmup);
+  }
 
-if (!recognition) recognition = initRecognition();
-if (recognition) {
-try { recognition.start(); } catch(e) {}
-}
+  if (!recognition) recognition = initRecognition();
+  if (recognition) {
+    try { recognition.start(); } catch(e) {}
+  }
 
-playSound('start');
-setLiveState('LISTENING');
+  playSound('start');
+  setLiveState('LISTENING');
 }
 
 function stopLiveConversation() {
-isConversationActive = false;
+  isConversationActive = false;
 
-clearTimeout(recRestartTimer);
-if (silenceTimer) { clearInterval(silenceTimer); silenceTimer = null; }
+  clearTimeout(recRestartTimer);
+  if (silenceTimer) { clearInterval(silenceTimer); silenceTimer = null; }
 
-if (recognition) {
-try { recognition.stop(); } catch(e) {}
-}
-if (window.speechSynthesis) window.speechSynthesis.cancel();
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+  }
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
 
-playSound('end');
-setLiveState('IDLE');
+  playSound('end');
+  setLiveState('IDLE');
 }
 
 // Nút Mic điều khiển Bật/Tắt cuộc trò chuyện
 function startVoice() {
-isConversationActive ? stopLiveConversation() : startLiveConversation();
+  isConversationActive ? stopLiveConversation() : startLiveConversation();
 }
 
 // Cập nhật trạng thái hiển thị của nút Mic & Dòng chữ trạng thái
 function setLiveState(state) {
-liveState = state;
-const micBtn = document.getElementById('micBtn');
-const voiceStatus = document.getElementById('voiceStatus');
-if (!micBtn || !voiceStatus) return;
+  liveState = state;
+  const micBtn = document.getElementById('micBtn');
+  const voiceStatus = document.getElementById('voiceStatus');
+  if (!micBtn || !voiceStatus) return;
 
-micBtn.className = 'mic-btn';
-micBtn.innerHTML = '🎤';
+  micBtn.className = 'mic-btn';
+  micBtn.innerHTML = '🎤';
 
-switch (state) {
-case 'IDLE':
-voiceStatus.textContent = 'Nhấn mic để bắt đầu cuộc trò chuyện';
-voiceStatus.style.color = '#a78bfa';
-break;
-case 'LISTENING':
-micBtn.classList.add('state-listening');
-micBtn.innerHTML = '👂';
-voiceStatus.textContent = '🎙️ Đang nghe... Hãy nói';
-voiceStatus.style.color = '#60a5fa';
-break;
-case 'USER_SPEAKING':
-micBtn.classList.add('state-user-speaking');
-micBtn.innerHTML = '💬';
-voiceStatus.style.color = '#f472b6';
-break;
-case 'PROCESSING':
-micBtn.classList.add('state-processing');
-micBtn.innerHTML = '⏳';
-voiceStatus.textContent = '🤖 Jarvis đang suy nghĩ...';
-voiceStatus.style.color = '#fbbf24';
-break;
-case 'SPEAKING':
-micBtn.classList.add('state-speaking');
-micBtn.innerHTML = '🗣️';
-voiceStatus.style.color = '#34d399';
-break;
-case 'WAITING':
-micBtn.classList.add('state-waiting');
-micBtn.innerHTML = '⏳';
-voiceStatus.style.color = '#fbbf24';
-break;
-}
+  switch (state) {
+    case 'IDLE':
+      voiceStatus.textContent = 'Nhấn mic để bắt đầu cuộc trò chuyện';
+      voiceStatus.style.color = '#a78bfa';
+      break;
+    case 'LISTENING':
+      micBtn.classList.add('state-listening');
+      micBtn.innerHTML = '👂';
+      voiceStatus.textContent = '🎙️ Đang nghe... Hãy nói';
+      voiceStatus.style.color = '#60a5fa';
+      break;
+    case 'USER_SPEAKING':
+      micBtn.classList.add('state-user-speaking');
+      micBtn.innerHTML = '💬';
+      voiceStatus.style.color = '#f472b6';
+      break;
+    case 'PROCESSING':
+      micBtn.classList.add('state-processing');
+      micBtn.innerHTML = '⏳';
+      voiceStatus.textContent = '🤖 Jarvis đang suy nghĩ...';
+      voiceStatus.style.color = '#fbbf24';
+      break;
+    case 'SPEAKING':
+      micBtn.classList.add('state-speaking');
+      micBtn.innerHTML = '🗣️';
+      voiceStatus.style.color = '#34d399';
+      break;
+    case 'WAITING':
+      micBtn.classList.add('state-waiting');
+      micBtn.innerHTML = '⏳';
+      voiceStatus.style.color = '#fbbf24';
+      break;
+  }
 }
 
 // Bộ đếm ngược 5 giây im lặng để tự động ngắt kết nối
 function startSilenceTimer() {
-if (silenceTimer) clearInterval(silenceTimer);
-setLiveState('WAITING');
+  if (silenceTimer) clearInterval(silenceTimer);
+  setLiveState('WAITING');
 
-let countdown = 5;
-document.getElementById('voiceStatus').innerHTML = `⏳ Đang chờ bạn nói tiếp... (${countdown}s)`;
+  let countdown = 5;
+  document.getElementById('voiceStatus').innerHTML = `⏳ Đang chờ bạn nói tiếp... (${countdown}s)`;
 
-silenceTimer = setInterval(() => {
-countdown--;
-if (countdown > 0) {
-document.getElementById('voiceStatus').innerHTML = `⏳ Đang chờ bạn nói tiếp... (${countdown}s)`;
-} else {
-clearInterval(silenceTimer);
-silenceTimer = null;
-console.log('Hết 5s im lặng, ngắt hội thoại.');
-stopLiveConversation();
-}
-}, 1000);
+  silenceTimer = setInterval(() => {
+    countdown--;
+    if (countdown > 0) {
+      document.getElementById('voiceStatus').innerHTML = `⏳ Đang chờ bạn nói tiếp... (${countdown}s)`;
+    } else {
+      clearInterval(silenceTimer);
+      silenceTimer = null;
+      console.log('Hết 5s im lặng, ngắt hội thoại.');
+      stopLiveConversation();
+    }
+  }, 1000);
 }
 
 // Xử lý gửi văn bản giọng nói lên API Groq
 async function processLiveSpeech(text) {
-addLog('user', '🎙️ "' + text + '"');
-const apiKey = localStorage.getItem('sh_groqkey');
-const prompt = `Bạn là trợ lý ảo nhà thông minh tên Jarvis. Bạn có 2 nhiệm vụ:
+  addLog('user', '🎙️ "' + text + '"');
+  const apiKey = localStorage.getItem('sh_groqkey');
+  const prompt = `Bạn là trợ lý ảo nhà thông minh tên Jarvis. Bạn có 2 nhiệm vụ:
 1. Nhận diện và thực thi điều khiển thiết bị thông minh khi được yêu cầu.
 2. Trả lời các câu hỏi trò chuyện, kiến thức thông thường của người dùng một cách đầy đủ, thông minh, chi tiết và thân thiện bằng CHÍNH NGÔN NGỮ mà người dùng đang giao tiếp (hỗ trợ cả Tiếng Việt, Tiếng Anh, Tiếng Nhật, v.v.).
 
@@ -995,11 +993,11 @@ Hành động hợp lệ: "on" (bật/mở), "off" (tắt/đóng/khóa) hoặc "
 
 Yêu cầu trả về JSON định dạng sau (không giải thích hay thêm văn bản khác ngoài JSON):
 {
- "commands": [
-   { "device": "tên_thiết_bị", "action": "hành_động" }
- ],
- "speak": "câu_trả_lời_hoặc_câu_nói_phản_hồi",
- "lang": "mã_ngôn_ngữ_bcp47"
+  "commands": [
+    { "device": "tên_thiết_bị", "action": "hành_động" }
+  ],
+  "speak": "câu_trả_lời_hoặc_câu_nói_phản_hồi",
+  "lang": "mã_ngôn_ngữ_bcp47"
 }
 
 Quy tắc:
@@ -1020,123 +1018,123 @@ Ví dụ suy luận:
 
 Câu nói của người dùng: "${text}"`;
 
-try {
-const res = await fetch(
-'https://api.groq.com/openai/v1/chat/completions',
-{
-method: 'POST',
-headers: { 
-'Content-Type': 'application/json',
-'Authorization': 'Bearer ' + apiKey
-},
-body: JSON.stringify({
-model: 'llama-3.1-8b-instant',
-messages: [{ role: 'user', content: prompt }],
-temperature: 0.1,
-response_format: { type: "json_object" }
-})
-}
-);
-const data = await res.json();
-console.log('Groq raw:', JSON.stringify(data));
+  try {
+    const res = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.1,
+          response_format: { type: "json_object" }
+        })
+      }
+    );
+    const data = await res.json();
+    console.log('Groq raw:', JSON.stringify(data));
 
-if (data.error) {
-addLog('error', '❌ API lỗi: ' + data.error.message);
-document.getElementById('voiceStatus').textContent = '❌ ' + data.error.message;
-if (isConversationActive) startSilenceTimer();
-return;
-}
+    if (data.error) {
+      addLog('error', '❌ API lỗi: ' + data.error.message);
+      document.getElementById('voiceStatus').textContent = '❌ ' + data.error.message;
+      if (isConversationActive) startSilenceTimer();
+      return;
+    }
 
-const raw = data.choices?.[0]?.message?.content?.trim();
-if (!raw) {
-addLog('error', '❌ Groq không trả về nội dung.');
-if (isConversationActive) startSilenceTimer();
-return;
-}
+    const raw = data.choices?.[0]?.message?.content?.trim();
+    if (!raw) {
+      addLog('error', '❌ Groq không trả về nội dung.');
+      if (isConversationActive) startSilenceTimer();
+      return;
+    }
 
-const clean = raw.replace(/```json|```/g, '').trim();
-const cmd = JSON.parse(clean);
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const cmd = JSON.parse(clean);
 
-if (cmd.error) {
-addLog('error', '❓ ' + cmd.error);
-document.getElementById('voiceStatus').textContent = '❓ Không nhận ra lệnh';
-speak("Tôi không hiểu câu lệnh này.");
-} else {
-let executedCount = 0;
-let delayMs = 0;
+    if (cmd.error) {
+      addLog('error', '❓ ' + cmd.error);
+      document.getElementById('voiceStatus').textContent = '❓ Không nhận ra lệnh';
+      speak("Tôi không hiểu câu lệnh này.");
+    } else {
+      let executedCount = 0;
+      let delayMs = 0;
 
-if (cmd.commands && Array.isArray(cmd.commands)) {
-cmd.commands.forEach(c => {
-if (c.device && c.action) {
-setTimeout(() => {
-const msg = getActionText(c.device, c.action);
-addLog('action', '⚡ ' + msg);
-sendCommand(c.device, c.action);
-}, delayMs);
-delayMs += 250;
-executedCount++;
-}
-});
-}
+      if (cmd.commands && Array.isArray(cmd.commands)) {
+        cmd.commands.forEach(c => {
+          if (c.device && c.action) {
+            setTimeout(() => {
+              const msg = getActionText(c.device, c.action);
+              addLog('action', '⚡ ' + msg);
+              sendCommand(c.device, c.action);
+            }, delayMs);
+            delayMs += 250;
+            executedCount++;
+          }
+        });
+      }
 
-// Xử lý phản hồi giọng nói (TTS)
-let speakText = cmd.speak;
-let speakLang = cmd.lang || 'vi-VN';
-if (speakText) {
-if (speakText === 'temp_humi') {
-speakLang = 'vi-VN';
-if (currentTemp !== null && currentHumi !== null) {
-speakText = `Nhiệt độ trong nhà hiện tại là ${currentTemp} độ C, và độ ẩm là ${currentHumi} phần trăm.`;
-} else {
-speakText = "Hiện tại tôi chưa nhận được dữ liệu cảm biến từ thiết bị.";
-}
-}
-addLog('ai', '🗣️ [' + speakLang + '] ' + speakText);
-speak(speakText, speakLang);
-document.getElementById('voiceStatus').textContent = speakText;
-} else {
-if (executedCount > 0) {
-document.getElementById('voiceStatus').textContent = `✅ Đã gửi ${executedCount} lệnh`;
-}
-if (isConversationActive) startSilenceTimer();
-}
-}
-} catch(err) {
-addLog('error', '❌ ' + err.message);
-document.getElementById('voiceStatus').textContent = '❌ Lỗi xử lý';
-if (isConversationActive) startSilenceTimer();
-}
+      // Xử lý phản hồi giọng nói (TTS)
+      let speakText = cmd.speak;
+      let speakLang = cmd.lang || 'vi-VN';
+      if (speakText) {
+        if (speakText === 'temp_humi') {
+          speakLang = 'vi-VN';
+          if (currentTemp !== null && currentHumi !== null) {
+            speakText = `Nhiệt độ trong nhà hiện tại là ${currentTemp} độ C, và độ ẩm là ${currentHumi} phần trăm.`;
+          } else {
+            speakText = "Hiện tại tôi chưa nhận được dữ liệu cảm biến từ thiết bị.";
+          }
+        }
+        addLog('ai', '🗣️ [' + speakLang + '] ' + speakText);
+        speak(speakText, speakLang);
+        document.getElementById('voiceStatus').textContent = speakText;
+      } else {
+        if (executedCount > 0) {
+          document.getElementById('voiceStatus').textContent = `✅ Đã gửi ${executedCount} lệnh`;
+        }
+        if (isConversationActive) startSilenceTimer();
+      }
+    }
+  } catch(err) {
+    addLog('error', '❌ ' + err.message);
+    document.getElementById('voiceStatus').textContent = '❌ Lỗi xử lý';
+    if (isConversationActive) startSilenceTimer();
+  }
 }
 
 function sendCommand(device, action) {
-if (!mqttClient || !mqttClient.connected) {
-addLog('error', '❌ MQTT chưa kết nối!'); return;
-}
-mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device, action }), { qos:1 });
-if (device === 'all') {
-['light1','light2','fan','fan2'].forEach(d => updateCard(d, action === 'on'));
-} else {
-updateCard(device, action === 'on');
-}
+  if (!mqttClient || !mqttClient.connected) {
+    addLog('error', '❌ MQTT chưa kết nối!'); return;
+  }
+  mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device, action }), { qos:1 });
+  if (device === 'all') {
+    ['light1','light2','fan','fan2'].forEach(d => updateCard(d, action === 'on'));
+  } else {
+    updateCard(device, action === 'on');
+  }
 }
 
 function manualToggle(device) {
-const newState = !deviceStates[device];
-sendCommand(device, newState ? 'on' : 'off');
-addLog('action', '👆 ' + getActionText(device, newState ? 'on' : 'off'));
+  const newState = !deviceStates[device];
+  sendCommand(device, newState ? 'on' : 'off');
+  addLog('action', '👆 ' + getActionText(device, newState ? 'on' : 'off'));
 }
 
 function updateCard(device, state) {
-deviceStates[device] = state;
-const card = document.getElementById('card-' + device);
-const stateEl = document.getElementById('state-' + device);
-if (!card || !stateEl) return;
-if (device === 'door') {
-stateEl.textContent = state ? 'Mở' : 'Đóng';
-} else {
-stateEl.textContent = state ? 'Bật' : 'Tắt';
-}
-card.classList.toggle('on', state);
+  deviceStates[device] = state;
+  const card = document.getElementById('card-' + device);
+  const stateEl = document.getElementById('state-' + device);
+  if (!card || !stateEl) return;
+  if (device === 'door') {
+    stateEl.textContent = state ? 'Mở' : 'Đóng';
+  } else {
+    stateEl.textContent = state ? 'Bật' : 'Tắt';
+  }
+  card.classList.toggle('on', state);
 }
 
 // ─── Chế độ Tự động / Thủ công ───────────────────────────────────────────────
@@ -1173,30 +1171,30 @@ function updateAutoModeUI(isAuto) {
 }
 
 function getActionText(device, action) {
-const deviceNames = { light1:'đèn 1', light2:'đèn 2', fan:'quạt 1', fan2:'quạt 2', door:'cửa', all:'tất cả thiết bị', lcd_tab:'màn hình LCD' };
-const dName = deviceNames[device] || device;
-if (device === 'lcd_tab') {
-const screenNames = { '1':'màn hình chính', '2':'màn hình cảm biến', '3':'màn hình lời nhắc' };
-return `Chuyển ${dName} sang ${screenNames[action] || action}`;
-}
-const aText = action === 'on' ? (device === 'door' ? 'mở' : 'bật') : (device === 'door' ? 'đóng' : 'tắt');
-return `${aText.charAt(0).toUpperCase() + aText.slice(1)} ${dName}`;
+  const deviceNames = { light1:'đèn 1', light2:'đèn 2', fan:'quạt 1', fan2:'quạt 2', door:'cửa', all:'tất cả thiết bị', lcd_tab:'màn hình LCD' };
+  const dName = deviceNames[device] || device;
+  if (device === 'lcd_tab') {
+    const screenNames = { '1':'màn hình chính', '2':'màn hình cảm biến', '3':'màn hình lời nhắc' };
+    return `Chuyển ${dName} sang ${screenNames[action] || action}`;
+  }
+  const aText = action === 'on' ? (device === 'door' ? 'mở' : 'bật') : (device === 'door' ? 'đóng' : 'tắt');
+  return `${aText.charAt(0).toUpperCase() + aText.slice(1)} ${dName}`;
 }
 
 function addLog(type, text) {
-const log = document.getElementById('chatLog');
-const time = new Date().toLocaleTimeString('vi', {hour:'2-digit', minute:'2-digit'});
-const div = document.createElement('div');
-div.className = 'chat-msg';
-div.innerHTML = `<span class="time">${time}</span><span class="${type}">${text}</span>`;
-log.appendChild(div);
-log.scrollTop = log.scrollHeight;
+  const log = document.getElementById('chatLog');
+  const time = new Date().toLocaleTimeString('vi', {hour:'2-digit', minute:'2-digit'});
+  const div = document.createElement('div');
+  div.className = 'chat-msg';
+  div.innerHTML = `<span class="time">${time}</span><span class="${type}">${text}</span>`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
 }
 
 function setStatus(text, color) {
-document.getElementById('mqttStatus').textContent = text;
-const dot = document.getElementById('mqttDot');
-dot.className = 'dot' + (color ? ' ' + color : '');
+  document.getElementById('mqttStatus').textContent = text;
+  const dot = document.getElementById('mqttDot');
+  dot.className = 'dot' + (color ? ' ' + color : '');
 }
 
 // Hàm phát giọng nói (TTS) — tích hợp với bộ máy trạng thái hội thoại liên tục
@@ -1205,207 +1203,207 @@ dot.className = 'dot' + (color ? ' ' + color : '');
 // trong máy, vốn thường là giọng robot chất lượng thấp. Đây là tín hiệu đáng tin cậy
 // hơn nhiều so với chỉ đoán qua tên giọng.
 function scoreVoice(v) {
-let score = 0;
-if (v.localService === false) score += 10;
-const n = v.name.toLowerCase();
-['neural', 'wavenet', 'online', 'natural', 'premium', 'enhanced', 'plus', 'studio', 'siri', 'nâng cao', 'giọng nói']
-.forEach(k => { if (n.includes(k)) score += 3; });
-if (n.includes('google')) score += 1;
-return score;
+  let score = 0;
+  if (v.localService === false) score += 10;
+  const n = v.name.toLowerCase();
+  ['neural', 'wavenet', 'online', 'natural', 'premium', 'enhanced', 'plus', 'studio', 'siri', 'nâng cao', 'giọng nói']
+    .forEach(k => { if (n.includes(k)) score += 3; });
+  if (n.includes('google')) score += 1;
+  return score;
 }
 
 function pickBestVoice(matchedVoices) {
-if (!matchedVoices.length) return null;
-return [...matchedVoices].sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
+  if (!matchedVoices.length) return null;
+  return [...matchedVoices].sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
 }
 
 // Làm sạch & chuẩn hoá văn bản trước khi đọc — áp dụng cho mọi ngôn ngữ:
 // bỏ định dạng Markdown (AI đôi khi lỡ trả về **đậm**, _nghiêng_, # tiêu đề...),
 // bỏ emoji, gọn khoảng trắng/dấu câu thừa.
 function stripMarkdownAndEmoji(text) {
-return text
-.replace(/\*\*(.*?)\*\*/g, '$1')
-.replace(/\*(.*?)\*/g, '$1')
-.replace(/_(.*?)_/g, '$1')
-.replace(/`{1,3}([^`]*)`{1,3}/g, '$1')
-.replace(/^#{1,6}\s*/gm, '')
-.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}]/gu, '')
-.replace(/[ \t]{2,}/g, ' ')
-.replace(/\n{2,}/g, '. ')
-.trim();
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/_(.*?)_/g, '$1')
+    .replace(/`{1,3}([^`]*)`{1,3}/g, '$1')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}]/gu, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{2,}/g, '. ')
+    .trim();
 }
 
 // Chuẩn hoá ký hiệu/đơn vị sang dạng đọc được — đây là phần chính khắc phục lỗi
 // "ngọng" và bỏ sót ký tự như °C, %, đơn vị viết tắt...
 function normalizeSymbolsVi(text) {
-return text
-.replace(/°\s*C\b/gi, ' độ C')
-.replace(/\bđộ\s*C\b/gi, 'độ xê')
-.replace(/°\s*F\b/gi, ' độ F')
-.replace(/\bđộ\s*F\b/gi, 'độ ép')
-.replace(/°/g, ' độ ')
-.replace(/%/g, ' phần trăm')
-.replace(/\bkm\/h\b/gi, 'ki lô mét trên giờ')
-.replace(/\bm\/s\b/gi, 'mét trên giây')
-.replace(/\bm2\b|\bm²\b/gi, 'mét vuông')
-.replace(/\bkg\b/gi, 'ki lô gam')
-.replace(/&/g, ' và ')
-.replace(/@/g, ' a còng ')
-.replace(/\+/g, ' cộng ')
-.replace(/(\d)\s*-\s*(\d)/g, '$1 đến $2')
-.replace(/\.\.\./g, ', ')
-.replace(/\b(đèn|quạt|cửa) 1\b/gi, '$1 một')
-.replace(/\b(đèn|quạt|cửa) 2\b/gi, '$1 hai')
-// Phiên âm từ tiếng Anh thông dụng sang tiếng Việt để giọng đọc vi-VN không bị ngọng
-.replace(/\bjarvis\b/gi, 'Gia vít')
-.replace(/\bapi\b/gi, 'A P I')
-.replace(/\bgroq\b/gi, 'Gờ rốc')
-.replace(/\bllama\b/gi, 'La ma')
-.replace(/\bmqtt\b/gi, 'Mờ Quy Tê Tê')
-.replace(/\bhivemq\b/gi, 'Hai vờ Mờ Quy')
-.replace(/\bsmart\s*home\b/gi, 'Nhà thông minh')
-.replace(/\bsmart\b/gi, 'thông minh')
-.replace(/\bon\b/gi, 'bật')
-.replace(/\boff\b/gi, 'tắt')
-.replace(/\bled\b/gi, 'lét')
-.replace(/\besp32\b/gi, 'E ét pê ba hai')
-.replace(/\besp\b/gi, 'E ét pê')
-.replace(/\bwifi\b/gi, 'Quai phai')
-.replace(/\bwi-fi\b/gi, 'Quai phai');
+  return text
+    .replace(/°\s*C\b/gi, ' độ C')
+    .replace(/\bđộ\s*C\b/gi, 'độ xê')
+    .replace(/°\s*F\b/gi, ' độ F')
+    .replace(/\bđộ\s*F\b/gi, 'độ ép')
+    .replace(/°/g, ' độ ')
+    .replace(/%/g, ' phần trăm')
+    .replace(/\bkm\/h\b/gi, 'ki lô mét trên giờ')
+    .replace(/\bm\/s\b/gi, 'mét trên giây')
+    .replace(/\bm2\b|\bm²\b/gi, 'mét vuông')
+    .replace(/\bkg\b/gi, 'ki lô gam')
+    .replace(/&/g, ' và ')
+    .replace(/@/g, ' a còng ')
+    .replace(/\+/g, ' cộng ')
+    .replace(/(\d)\s*-\s*(\d)/g, '$1 đến $2')
+    .replace(/\.\.\./g, ', ')
+    .replace(/\b(đèn|quạt|cửa) 1\b/gi, '$1 một')
+    .replace(/\b(đèn|quạt|cửa) 2\b/gi, '$1 hai')
+    // Phiên âm từ tiếng Anh thông dụng sang tiếng Việt để giọng đọc vi-VN không bị ngọng
+    .replace(/\bjarvis\b/gi, 'Gia vít')
+    .replace(/\bapi\b/gi, 'A P I')
+    .replace(/\bgroq\b/gi, 'Gờ rốc')
+    .replace(/\bllama\b/gi, 'La ma')
+    .replace(/\bmqtt\b/gi, 'Mờ Quy Tê Tê')
+    .replace(/\bhivemq\b/gi, 'Hai vờ Mờ Quy')
+    .replace(/\bsmart\s*home\b/gi, 'Nhà thông minh')
+    .replace(/\bsmart\b/gi, 'thông minh')
+    .replace(/\bon\b/gi, 'bật')
+    .replace(/\boff\b/gi, 'tắt')
+    .replace(/\bled\b/gi, 'lét')
+    .replace(/\besp32\b/gi, 'E ét pê ba hai')
+    .replace(/\besp\b/gi, 'E ét pê')
+    .replace(/\bwifi\b/gi, 'Quai phai')
+    .replace(/\bwi-fi\b/gi, 'Quai phai');
 }
 
 let ttsWatchdog = null; // Safety timer — nếu onend không bắn thì tự reset
 
 function speak(text, langCode = 'vi-VN') {
-if (!window.speechSynthesis || !text) {
-if (isConversationActive) startSilenceTimer();
-return;
-}
-window.speechSynthesis.cancel();
-if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; }
+  if (!window.speechSynthesis || !text) {
+    if (isConversationActive) startSilenceTimer();
+    return;
+  }
+  window.speechSynthesis.cancel();
+  if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; }
 
-let cleanText = stripMarkdownAndEmoji(text);
-if (langCode.startsWith('vi')) {
-cleanText = normalizeSymbolsVi(cleanText);
-} else {
-cleanText = cleanText.replace(/°\s*C\b/gi, ' degrees C').replace(/°\s*F\b/gi, ' degrees F').replace(/%/g, ' percent');
-}
+  let cleanText = stripMarkdownAndEmoji(text);
+  if (langCode.startsWith('vi')) {
+    cleanText = normalizeSymbolsVi(cleanText);
+  } else {
+    cleanText = cleanText.replace(/°\s*C\b/gi, ' degrees C').replace(/°\s*F\b/gi, ' degrees F').replace(/%/g, ' percent');
+  }
 
-const utterance = new SpeechSynthesisUtterance(cleanText);
-utterance.lang   = langCode;
-utterance.rate   = langCode.startsWith('vi') ? 1.05 : 1.0;
-utterance.pitch  = 1.0;
-utterance.volume = 1.0;
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  utterance.lang   = langCode;
+  utterance.rate   = langCode.startsWith('vi') ? 1.05 : 1.0;
+  utterance.pitch  = 1.0;
+  utterance.volume = 1.0;
 
-const voices = window.speechSynthesis.getVoices();
-const langPrefix = langCode.split('-')[0].toLowerCase();
-let targetVoice = null;
-const savedViVoice = localStorage.getItem('sh_vi_voice');
-const savedEnVoice = localStorage.getItem('sh_en_voice');
-if (langPrefix === 'vi' && savedViVoice) targetVoice = voices.find(v => v.name === savedViVoice);
-else if (langPrefix === 'en' && savedEnVoice) targetVoice = voices.find(v => v.name === savedEnVoice);
-if (!targetVoice) {
-const matched = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
-targetVoice = pickBestVoice(matched);
-}
-if (targetVoice) {
-utterance.voice = targetVoice;
-console.log('TTS voice:', targetVoice.name);
-}
+  const voices = window.speechSynthesis.getVoices();
+  const langPrefix = langCode.split('-')[0].toLowerCase();
+  let targetVoice = null;
+  const savedViVoice = localStorage.getItem('sh_vi_voice');
+  const savedEnVoice = localStorage.getItem('sh_en_voice');
+  if (langPrefix === 'vi' && savedViVoice) targetVoice = voices.find(v => v.name === savedViVoice);
+  else if (langPrefix === 'en' && savedEnVoice) targetVoice = voices.find(v => v.name === savedEnVoice);
+  if (!targetVoice) {
+    const matched = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
+    targetVoice = pickBestVoice(matched);
+  }
+  if (targetVoice) {
+    utterance.voice = targetVoice;
+    console.log('TTS voice:', targetVoice.name);
+  }
 
-if (isConversationActive) {
-setLiveState('SPEAKING');
-document.getElementById('voiceStatus').textContent = '🗣️ ' + cleanText.slice(0, 60) + (cleanText.length > 60 ? '…' : '');
+  if (isConversationActive) {
+    setLiveState('SPEAKING');
+    document.getElementById('voiceStatus').textContent = '🗣️ ' + cleanText.slice(0, 60) + (cleanText.length > 60 ? '…' : '');
 
-const resetAfterSpeak = () => {
-if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; }
-if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING') {
-startSilenceTimer();
-}
-};
+    const resetAfterSpeak = () => {
+      if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; }
+      if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING') {
+        startSilenceTimer();
+      }
+    };
 
-utterance.onend   = resetAfterSpeak;
-utterance.onerror = (e) => {
-if (e.error === 'interrupted') return; // bị barge-in — bình thường
-console.warn('TTS error:', e.error);
-resetAfterSpeak();
-};
+    utterance.onend   = resetAfterSpeak;
+    utterance.onerror = (e) => {
+      if (e.error === 'interrupted') return; // bị barge-in — bình thường
+      console.warn('TTS error:', e.error);
+      resetAfterSpeak();
+    };
 
-// ── Chrome TTS watchdog ──────────────────────────────────────────────
-// Chrome bug: utterance.onend đôi khi không bắn (tab mất focus, engine kẹt).
-// Tính thời lượng ước tính (~80ms/ký tự ở tốc độ 1.05x) rồi đặt timer fallback.
-// Nếu sau đó TTS vẫn còn "speaking" thì gọi cancel() để giải phóng.
-const estimatedMs = Math.max(2500, cleanText.length * 80);
-ttsWatchdog = setTimeout(() => {
-if (isConversationActive && liveState === 'SPEAKING') {
-console.warn('TTS watchdog: onend không bắn sau', estimatedMs, 'ms — force reset');
-window.speechSynthesis.cancel();
-resetAfterSpeak();
-}
-}, estimatedMs + 2500);
+    // ── Chrome TTS watchdog ──────────────────────────────────────────────
+    // Chrome bug: utterance.onend đôi khi không bắn (tab mất focus, engine kẹt).
+    // Tính thời lượng ước tính (~80ms/ký tự ở tốc độ 1.05x) rồi đặt timer fallback.
+    // Nếu sau đó TTS vẫn còn "speaking" thì gọi cancel() để giải phóng.
+    const estimatedMs = Math.max(2500, cleanText.length * 80);
+    ttsWatchdog = setTimeout(() => {
+      if (isConversationActive && liveState === 'SPEAKING') {
+        console.warn('TTS watchdog: onend không bắn sau', estimatedMs, 'ms — force reset');
+        window.speechSynthesis.cancel();
+        resetAfterSpeak();
+      }
+    }, estimatedMs + 2500);
 
-// Chrome TTS pause bug: Chrome tự dừng TTS sau ~15s nếu không có interaction.
-// Workaround: resume() mỗi 10s trong khi AI đang nói.
-const resumeInterval = setInterval(() => {
-if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-if (!window.speechSynthesis.speaking || liveState !== 'SPEAKING') clearInterval(resumeInterval);
-}, 10000);
-}
+    // Chrome TTS pause bug: Chrome tự dừng TTS sau ~15s nếu không có interaction.
+    // Workaround: resume() mỗi 10s trong khi AI đang nói.
+    const resumeInterval = setInterval(() => {
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+      if (!window.speechSynthesis.speaking || liveState !== 'SPEAKING') clearInterval(resumeInterval);
+    }, 10000);
+  }
 
-window.speechSynthesis.speak(utterance);
+  window.speechSynthesis.speak(utterance);
 }
 
 // Đọc thử một câu mẫu chứa các ký tự/đơn vị hay bị đọc sai, để người dùng nghe và
 // chọn giọng phù hợp ngay trong phần Cấu hình, không cần chạy cả luồng hội thoại.
 function testVoice(langPrefix) {
-if (langPrefix === 'vi') {
-speak('Xin chào, tôi là Jarvis. Nhiệt độ phòng hiện tại là hai mươi tám phẩy năm độ C, độ ẩm bảy mươi phần trăm.', 'vi-VN');
-} else {
-speak('Hello, I am Jarvis. The room temperature is seventy five degrees, humidity is sixty percent.', 'en-US');
-}
+  if (langPrefix === 'vi') {
+    speak('Xin chào, tôi là Jarvis. Nhiệt độ phòng hiện tại là hai mươi tám phẩy năm độ C, độ ẩm bảy mươi phần trăm.', 'vi-VN');
+  } else {
+    speak('Hello, I am Jarvis. The room temperature is seventy five degrees, humidity is sixty percent.', 'en-US');
+  }
 }
 
 function populateVoiceSelectors() {
-if (!window.speechSynthesis) return;
-const list = window.speechSynthesis.getVoices();
+  if (!window.speechSynthesis) return;
+  const list = window.speechSynthesis.getVoices();
+  
+  const viSelect = document.getElementById('viVoiceSelect');
+  const enSelect = document.getElementById('enVoiceSelect');
+  if (!viSelect || !enSelect) return;
 
-const viSelect = document.getElementById('viVoiceSelect');
-const enSelect = document.getElementById('enVoiceSelect');
-if (!viSelect || !enSelect) return;
+  const prevVi = viSelect.value || localStorage.getItem('sh_vi_voice');
+  const prevEn = enSelect.value || localStorage.getItem('sh_en_voice');
 
-const prevVi = viSelect.value || localStorage.getItem('sh_vi_voice');
-const prevEn = enSelect.value || localStorage.getItem('sh_en_voice');
+  viSelect.innerHTML = '<option value="">-- Tự động chọn (tốt nhất) --</option>';
+  enSelect.innerHTML = '<option value="">-- Tự động chọn (tốt nhất) --</option>';
 
-viSelect.innerHTML = '<option value="">-- Tự động chọn (tốt nhất) --</option>';
-enSelect.innerHTML = '<option value="">-- Tự động chọn (tốt nhất) --</option>';
+  const byScoreDesc = (a, b) => scoreVoice(b) - scoreVoice(a);
+  const viVoices = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi')).sort(byScoreDesc);
+  const enVoices = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('en')).sort(byScoreDesc);
 
-const byScoreDesc = (a, b) => scoreVoice(b) - scoreVoice(a);
-const viVoices = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi')).sort(byScoreDesc);
-const enVoices = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('en')).sort(byScoreDesc);
+  viVoices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = v.name + (v.localService === false ? ' ⭐ Online' : '');
+    viSelect.appendChild(opt);
+  });
 
-viVoices.forEach(v => {
-const opt = document.createElement('option');
-opt.value = v.name;
-opt.textContent = v.name + (v.localService === false ? ' ⭐ Online' : '');
-viSelect.appendChild(opt);
-});
+  enVoices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = v.name + (v.localService === false ? ' ⭐ Online' : '');
+    enSelect.appendChild(opt);
+  });
 
-enVoices.forEach(v => {
-const opt = document.createElement('option');
-opt.value = v.name;
-opt.textContent = v.name + (v.localService === false ? ' ⭐ Online' : '');
-enSelect.appendChild(opt);
-});
-
-if (prevVi) viSelect.value = prevVi;
-if (prevEn) enSelect.value = prevEn;
+  if (prevVi) viSelect.value = prevVi;
+  if (prevEn) enSelect.value = prevEn;
 }
 
 function saveSelectedVoices() {
-const viVal = document.getElementById('viVoiceSelect').value;
-const enVal = document.getElementById('enVoiceSelect').value;
-localStorage.setItem('sh_vi_voice', viVal);
-localStorage.setItem('sh_en_voice', enVal);
+  const viVal = document.getElementById('viVoiceSelect').value;
+  const enVal = document.getElementById('enVoiceSelect').value;
+  localStorage.setItem('sh_vi_voice', viVal);
+  localStorage.setItem('sh_en_voice', enVal);
 }
 
 
@@ -1415,228 +1413,228 @@ let rfidBlacklist  = JSON.parse(localStorage.getItem('sh_rfid_blacklist')  || '[
 let rfidLogs       = JSON.parse(localStorage.getItem('sh_rfid_logs')       || '[]');
 
 function switchWebTab(tabName) {
-document.getElementById('tab-control').style.display = tabName === 'control' ? 'block' : 'none';
-document.getElementById('tab-rfid').style.display    = tabName === 'rfid'    ? 'block' : 'none';
-document.getElementById('btn-tab-control').classList.toggle('active', tabName === 'control');
-document.getElementById('btn-tab-rfid').classList.toggle('active',    tabName === 'rfid');
+  document.getElementById('tab-control').style.display = tabName === 'control' ? 'block' : 'none';
+  document.getElementById('tab-rfid').style.display    = tabName === 'rfid'    ? 'block' : 'none';
+  document.getElementById('btn-tab-control').classList.toggle('active', tabName === 'control');
+  document.getElementById('btn-tab-rfid').classList.toggle('active',    tabName === 'rfid');
 }
 
 function saveWhitelist() {
-localStorage.setItem('sh_rfid_whitelist', JSON.stringify(rfidWhitelist));
-renderWhitelist();
-syncListsToEsp32();
+  localStorage.setItem('sh_rfid_whitelist', JSON.stringify(rfidWhitelist));
+  renderWhitelist();
+  syncListsToEsp32();
 }
 
 function saveBlacklist() {
-localStorage.setItem('sh_rfid_blacklist', JSON.stringify(rfidBlacklist));
-renderBlacklist();
-syncListsToEsp32();
+  localStorage.setItem('sh_rfid_blacklist', JSON.stringify(rfidBlacklist));
+  renderBlacklist();
+  syncListsToEsp32();
 }
 
 function saveLogs() {
-localStorage.setItem('sh_rfid_logs', JSON.stringify(rfidLogs));
-renderLogs();
+  localStorage.setItem('sh_rfid_logs', JSON.stringify(rfidLogs));
+  renderLogs();
 }
 
 function renderWhitelist() {
-const tbody = document.getElementById('rfidWhitelistBody');
-if (!tbody) return;
-tbody.innerHTML = '';
-if (rfidWhitelist.length === 0) {
-tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#666;padding:14px;">Chưa có thẻ nào</td></tr>';
-return;
-}
-rfidWhitelist.forEach(card => {
-const tr = document.createElement('tr');
-tr.innerHTML = `
-     <td><code>${card.uid}</code></td>
-     <td>${card.name}</td>
-     <td>
-       <button class="btn-danger" style="margin-right:4px;" onclick="moveToBlacklist('${card.uid}')">🚫 Cấm</button>
-       <button class="btn-danger" onclick="deleteFromWhitelist('${card.uid}')">Xóa</button>
-     </td>`;
-tbody.appendChild(tr);
-});
+  const tbody = document.getElementById('rfidWhitelistBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (rfidWhitelist.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#666;padding:14px;">Chưa có thẻ nào</td></tr>';
+    return;
+  }
+  rfidWhitelist.forEach(card => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><code>${card.uid}</code></td>
+      <td>${card.name}</td>
+      <td>
+        <button class="btn-danger" style="margin-right:4px;" onclick="moveToBlacklist('${card.uid}')">🚫 Cấm</button>
+        <button class="btn-danger" onclick="deleteFromWhitelist('${card.uid}')">Xóa</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
 }
 
 function renderBlacklist() {
-const tbody = document.getElementById('rfidBlacklistBody');
-if (!tbody) return;
-tbody.innerHTML = '';
-if (rfidBlacklist.length === 0) {
-tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#666;padding:14px;">Chưa cấm thẻ nào</td></tr>';
-return;
-}
-rfidBlacklist.forEach(card => {
-const tr = document.createElement('tr');
-tr.innerHTML = `
-     <td><code>${card.uid}</code></td>
-     <td>${card.name}</td>
-     <td>
-       <button style="background:var(--signal-green);border:none;color:#0c1a10;padding:4px 8px;border-radius:6px;font-size:0.8em;font-weight:600;cursor:pointer;margin-right:4px;" onclick="moveToWhitelist('${card.uid}')">✅ Cho phép</button>
-       <button class="btn-danger" onclick="deleteFromBlacklist('${card.uid}')">Xóa</button>
-     </td>`;
-tbody.appendChild(tr);
-});
+  const tbody = document.getElementById('rfidBlacklistBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (rfidBlacklist.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#666;padding:14px;">Chưa cấm thẻ nào</td></tr>';
+    return;
+  }
+  rfidBlacklist.forEach(card => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><code>${card.uid}</code></td>
+      <td>${card.name}</td>
+      <td>
+        <button style="background:var(--signal-green);border:none;color:#0c1a10;padding:4px 8px;border-radius:6px;font-size:0.8em;font-weight:600;cursor:pointer;margin-right:4px;" onclick="moveToWhitelist('${card.uid}')">✅ Cho phép</button>
+        <button class="btn-danger" onclick="deleteFromBlacklist('${card.uid}')">Xóa</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
 }
 
 function renderLogs() {
-const tbody = document.getElementById('rfidLogsBody');
-if (!tbody) return;
-tbody.innerHTML = '';
-if (rfidLogs.length === 0) {
-tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666;padding:14px;">Chưa có lịch sử</td></tr>';
-return;
-}
-rfidLogs.slice().reverse().forEach(log => {
-const tr = document.createElement('tr');
-let badge, badgeText;
-if (log.result === 'allowed')    { badge = 'allowed'; badgeText = '✅ Mở cửa'; }
-else if (log.result === 'banned') { badge = 'denied';  badgeText = '🚫 Bị cấm'; }
-else                              { badge = 'denied';  badgeText = '❓ Thẻ lạ'; }
-tr.innerHTML = `
-     <td>${log.time}</td>
-     <td><code>${log.uid}</code></td>
-     <td>${log.name || '—'}</td>
-     <td><span class="badge ${badge}">${badgeText}</span></td>`;
-tbody.appendChild(tr);
-});
+  const tbody = document.getElementById('rfidLogsBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (rfidLogs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#666;padding:14px;">Chưa có lịch sử</td></tr>';
+    return;
+  }
+  rfidLogs.slice().reverse().forEach(log => {
+    const tr = document.createElement('tr');
+    let badge, badgeText;
+    if (log.result === 'allowed')    { badge = 'allowed'; badgeText = '✅ Mở cửa'; }
+    else if (log.result === 'banned') { badge = 'denied';  badgeText = '🚫 Bị cấm'; }
+    else                              { badge = 'denied';  badgeText = '❓ Thẻ lạ'; }
+    tr.innerHTML = `
+      <td>${log.time}</td>
+      <td><code>${log.uid}</code></td>
+      <td>${log.name || '—'}</td>
+      <td><span class="badge ${badge}">${badgeText}</span></td>`;
+    tbody.appendChild(tr);
+  });
 }
 
 function addNewCard(type) {
-const uidInput  = document.getElementById('newCardUid');
-const nameInput = document.getElementById('newCardName');
-const uid  = uidInput.value.trim().toUpperCase();
-const name = removeVietnameseTones(nameInput.value.trim());
-if (!uid || !name) { alert('Nhập đầy đủ UID và Tên/Ghi chú!'); return; }
+  const uidInput  = document.getElementById('newCardUid');
+  const nameInput = document.getElementById('newCardName');
+  const uid  = uidInput.value.trim().toUpperCase();
+  const name = removeVietnameseTones(nameInput.value.trim());
+  if (!uid || !name) { alert('Nhập đầy đủ UID và Tên/Ghi chú!'); return; }
 
-const inWhite = rfidWhitelist.some(c => c.uid === uid);
-const inBlack = rfidBlacklist.some(c => c.uid === uid);
+  const inWhite = rfidWhitelist.some(c => c.uid === uid);
+  const inBlack = rfidBlacklist.some(c => c.uid === uid);
 
-if (type === 'allow') {
-if (inWhite) { alert('Thẻ này đã có trong danh sách cho phép!'); return; }
-if (inBlack) { rfidBlacklist = rfidBlacklist.filter(c => c.uid !== uid); saveBlacklist(); }
-rfidWhitelist.push({ uid, name });
-saveWhitelist();
-addLog('action', `✅ Cho phép thẻ: ${name} (${uid})`);
-} else {
-if (inBlack) { alert('Thẻ này đã bị cấm rồi!'); return; }
-if (inWhite) { rfidWhitelist = rfidWhitelist.filter(c => c.uid !== uid); saveWhitelist(); }
-rfidBlacklist.push({ uid, name });
-saveBlacklist();
-addLog('action', `🚫 Đã cấm thẻ: ${name} (${uid})`);
-}
-uidInput.value = '';
-nameInput.value = '';
+  if (type === 'allow') {
+    if (inWhite) { alert('Thẻ này đã có trong danh sách cho phép!'); return; }
+    if (inBlack) { rfidBlacklist = rfidBlacklist.filter(c => c.uid !== uid); saveBlacklist(); }
+    rfidWhitelist.push({ uid, name });
+    saveWhitelist();
+    addLog('action', `✅ Cho phép thẻ: ${name} (${uid})`);
+  } else {
+    if (inBlack) { alert('Thẻ này đã bị cấm rồi!'); return; }
+    if (inWhite) { rfidWhitelist = rfidWhitelist.filter(c => c.uid !== uid); saveWhitelist(); }
+    rfidBlacklist.push({ uid, name });
+    saveBlacklist();
+    addLog('action', `🚫 Đã cấm thẻ: ${name} (${uid})`);
+  }
+  uidInput.value = '';
+  nameInput.value = '';
 }
 
 function deleteFromWhitelist(uid) {
-if (!confirm('Xóa thẻ này khỏi danh sách cho phép?')) return;
-rfidWhitelist = rfidWhitelist.filter(c => c.uid !== uid);
-saveWhitelist();
-addLog('action', `🗑️ Đã xóa thẻ cho phép: ${uid}`);
+  if (!confirm('Xóa thẻ này khỏi danh sách cho phép?')) return;
+  rfidWhitelist = rfidWhitelist.filter(c => c.uid !== uid);
+  saveWhitelist();
+  addLog('action', `🗑️ Đã xóa thẻ cho phép: ${uid}`);
 }
 
 function deleteFromBlacklist(uid) {
-if (!confirm('Xóa thẻ này khỏi danh sách cấm?')) return;
-rfidBlacklist = rfidBlacklist.filter(c => c.uid !== uid);
-saveBlacklist();
-addLog('action', `🗑️ Đã xóa thẻ cấm: ${uid}`);
+  if (!confirm('Xóa thẻ này khỏi danh sách cấm?')) return;
+  rfidBlacklist = rfidBlacklist.filter(c => c.uid !== uid);
+  saveBlacklist();
+  addLog('action', `🗑️ Đã xóa thẻ cấm: ${uid}`);
 }
 
 function moveToBlacklist(uid) {
-const card = rfidWhitelist.find(c => c.uid === uid);
-if (!card) return;
-rfidWhitelist = rfidWhitelist.filter(c => c.uid !== uid);
-rfidBlacklist.push(card);
-saveWhitelist();
-saveBlacklist();
-addLog('action', `🚫 Đã cấm thẻ: ${card.name} (${uid})`);
+  const card = rfidWhitelist.find(c => c.uid === uid);
+  if (!card) return;
+  rfidWhitelist = rfidWhitelist.filter(c => c.uid !== uid);
+  rfidBlacklist.push(card);
+  saveWhitelist();
+  saveBlacklist();
+  addLog('action', `🚫 Đã cấm thẻ: ${card.name} (${uid})`);
 }
 
 function moveToWhitelist(uid) {
-const card = rfidBlacklist.find(c => c.uid === uid);
-if (!card) return;
-rfidBlacklist = rfidBlacklist.filter(c => c.uid !== uid);
-rfidWhitelist.push(card);
-saveWhitelist();
-saveBlacklist();
-addLog('action', `✅ Đã cho phép lại thẻ: ${card.name} (${uid})`);
+  const card = rfidBlacklist.find(c => c.uid === uid);
+  if (!card) return;
+  rfidBlacklist = rfidBlacklist.filter(c => c.uid !== uid);
+  rfidWhitelist.push(card);
+  saveWhitelist();
+  saveBlacklist();
+  addLog('action', `✅ Đã cho phép lại thẻ: ${card.name} (${uid})`);
 }
 
 // Sync cả whitelist (cho phép) lẫn blacklist (cấm) lên ESP32 qua MQTT.
 // ESP32 nhận: device:"rfid_sync" action:"ALLOW:UID1,UID2|DENY:UID3,UID4"
 function syncListsToEsp32() {
-if (!mqttClient || !mqttClient.connected) return;
-const allowStr = 'ALLOW:' + rfidWhitelist.map(c => c.uid).join(',');
-const denyStr  = 'DENY:'  + rfidBlacklist.map(c => c.uid).join(',');
-mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'rfid_sync', action: allowStr + '|' + denyStr }), { qos: 1 });
+  if (!mqttClient || !mqttClient.connected) return;
+  const allowStr = 'ALLOW:' + rfidWhitelist.map(c => c.uid).join(',');
+  const denyStr  = 'DENY:'  + rfidBlacklist.map(c => c.uid).join(',');
+  mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'rfid_sync', action: allowStr + '|' + denyStr }), { qos: 1 });
 }
 
 function removeVietnameseTones(str) {
-str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
-str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
-str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
-str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
-str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
-str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
-str = str.replace(/đ/g, "d");
-str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
-str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
-str = str.replace(/Ì|Í|Ị|ỉ|Ĩ/g, "I");
-str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
-str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
-str = str.replace(/Ỳ|Ý|Y|Ỷ|Ỹ/g, "Y");
-str = str.replace(/Đ/g, "D");
-return str.trim();
+  str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+  str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+  str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+  str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+  str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+  str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+  str = str.replace(/đ/g, "d");
+  str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+  str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+  str = str.replace(/Ì|Í|Ị|ỉ|Ĩ/g, "I");
+  str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+  str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+  str = str.replace(/Ỳ|Ý|Y|Ỷ|Ỹ/g, "Y");
+  str = str.replace(/Đ/g, "D");
+  return str.trim();
 }
 
 function sendReminder() {
-const input = document.getElementById('reminderInput');
-const text = removeVietnameseTones(input.value.trim());
-if (!text) {
-alert('Vui lòng nhập lời nhắc!');
-return;
-}
-sendCommand('reminder', text);
-addLog('action', `📝 Đã gửi lời nhắc lên LCD: "${text}"`);
-input.value = '';
+  const input = document.getElementById('reminderInput');
+  const text = removeVietnameseTones(input.value.trim());
+  if (!text) {
+    alert('Vui lòng nhập lời nhắc!');
+    return;
+  }
+  sendCommand('reminder', text);
+  addLog('action', `📝 Đã gửi lời nhắc lên LCD: "${text}"`);
+  input.value = '';
 }
 
 window.onload = () => {
-renderWhitelist();
-renderBlacklist();
-renderLogs();
-// Khắc phục lỗi nạp danh sách giọng nói trễ hoặc không kích hoạt sự kiện trên Safari iOS
-if (window.speechSynthesis) {
-const showVoices = () => {
-const list = window.speechSynthesis.getVoices();
-if (list && list.length > 0) {
-populateVoiceSelectors();
-const viNames = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi')).map(v => v.name);
-if (viNames.length > 0 && !window.hasLoggedVoices) {
-window.hasLoggedVoices = true;
-addLog('action', '🎙️ Giọng Việt tìm thấy: ' + viNames.join(', '));
-}
-}
-};
+  renderWhitelist();
+  renderBlacklist();
+  renderLogs();
+  // Khắc phục lỗi nạp danh sách giọng nói trễ hoặc không kích hoạt sự kiện trên Safari iOS
+  if (window.speechSynthesis) {
+    const showVoices = () => {
+      const list = window.speechSynthesis.getVoices();
+      if (list && list.length > 0) {
+        populateVoiceSelectors();
+        const viNames = list.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith('vi')).map(v => v.name);
+        if (viNames.length > 0 && !window.hasLoggedVoices) {
+          window.hasLoggedVoices = true;
+          addLog('action', '🎙️ Giọng Việt tìm thấy: ' + viNames.join(', '));
+        }
+      }
+    };
 
-// Chạy các lớp kích hoạt khác nhau
-showVoices();
-window.speechSynthesis.onvoiceschanged = showVoices;
-setTimeout(showVoices, 300);
-setTimeout(showVoices, 1000);
-}
+    // Chạy các lớp kích hoạt khác nhau
+    showVoices();
+    window.speechSynthesis.onvoiceschanged = showVoices;
+    setTimeout(showVoices, 300);
+    setTimeout(showVoices, 1000);
+  }
 
-const k = localStorage.getItem('sh_groqkey') || '';
-const p = localStorage.getItem('sh_mqttpass') || '';
-document.getElementById('apiKey').value = k;
-document.getElementById('mqttPass').value = p;
-
-// Chỉ tự động kết nối HiveMQ nếu đã lưu cấu hình trước đó trong trình duyệt
-if (k && p) {
-setTimeout(connect, 500);
-}
+  const k = localStorage.getItem('sh_groqkey') || '';
+  const p = localStorage.getItem('sh_mqttpass') || '';
+  document.getElementById('apiKey').value = k;
+  document.getElementById('mqttPass').value = p;
+  
+  // Chỉ tự động kết nối HiveMQ nếu đã lưu cấu hình trước đó trong trình duyệt
+  if (k && p) {
+    setTimeout(connect, 500);
+  }
 };
 </script>
 </body>
