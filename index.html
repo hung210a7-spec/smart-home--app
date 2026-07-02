@@ -563,6 +563,15 @@ body {
       <div class="name">Khí Gas</div>
       <div class="state" id="state-gas">-- %</div>
     </div>
+    <!-- Nút chế độ Thủ công / Tự động -->
+    <div class="device-card" id="card-automode" onclick="toggleAutoMode()" style="grid-column: 1 / -1; flex-direction: row; align-items:center; gap:14px; justify-content:center; padding: 14px 20px;">
+      <span class="led-dot" id="led-automode" style="background: var(--signal-green); box-shadow: 0 0 8px var(--signal-green);"></span>
+      <div style="text-align:left;">
+        <div class="name" style="font-size:1em; margin-bottom:3px;">Chế độ điều khiển</div>
+        <div class="state" id="state-automode" style="font-size:0.9em; color:var(--signal-green); font-weight:600;">🤖 Tự động (cảm biến)</div>
+      </div>
+      <div style="margin-left:auto; font-size:0.78em; color:var(--ink-dim); font-family:'JetBrains Mono',monospace; text-align:right;">Nhấn để đổi</div>
+    </div>
   </div>
 
   <!-- Gửi lời nhắc lên LCD -->
@@ -650,7 +659,7 @@ const MQTT_STATUS   = 'smarthome/nhacuatoi/status';
 let mqttClient = null;
 let isListening = false;
 let isProcessing = false;
-const deviceStates = { light1:false, light2:false, fan:false, fan2:false, door:false };
+const deviceStates = { light1:false, light2:false, fan:false, fan2:false, door:false, auto_mode:true };
 let currentTemp = null;
 let currentHumi = null;
 
@@ -667,12 +676,17 @@ function connect() {
   if (mqttClient) { mqttClient.end(true); mqttClient = null; }
 
   const clientId = 'webapp_' + Math.random().toString(16).slice(2,8);
+  console.log('[MQTT] Đang kết nối tới wss://' + MQTT_HOST + ':' + MQTT_PORT + '/mqtt');
+  console.log('[MQTT] user=' + MQTT_USER + ' pass=' + mqttPass.substring(0,4) + '...');
   mqttClient = mqtt.connect('wss://' + MQTT_HOST + ':' + MQTT_PORT + '/mqtt', {
     clientId,
     username: MQTT_USER,
     password: mqttPass,
     clean: true,
     reconnectPeriod: 5000,
+    protocolVersion: 4,   // MQTT 3.1.1 — tương thích HiveMQ Cloud
+    keepalive: 60,
+    connectTimeout: 10000,
   });
 
   mqttClient.on('connect', () => {
@@ -696,12 +710,15 @@ function connect() {
       if (d.fan2   !== undefined) updateCard('fan2',   d.fan2);
       if (d.door   !== undefined) updateCard('door',   d.door);
 
-      // ── Nhiệt độ / Độ ẩm — chỉ từ S3 (slave không có DHT) ──────────
+      // ── Nhiệt độ / Độ ẩm ──────────────────────────────────────────
       if (d.temp !== undefined) {
         currentTemp = parseFloat(d.temp).toFixed(1);
         currentHumi = parseFloat(d.humi).toFixed(1);
         document.getElementById('state-temp').textContent = currentTemp + '°C / ' + currentHumi + '%';
       }
+
+      // ── Chế độ Tự động / Thủ công ────────────────────────────────
+      if (d.auto_mode !== undefined) updateAutoModeUI(d.auto_mode);
 
       // ── Khí Gas ──────────────────────────────────────────────────
       // FIX: code cũ có điều kiện `d.gas !== undefined && d.temp === undefined`.
@@ -1118,6 +1135,39 @@ function updateCard(device, state) {
     stateEl.textContent = state ? 'Bật' : 'Tắt';
   }
   card.classList.toggle('on', state);
+}
+
+// ─── Chế độ Tự động / Thủ công ───────────────────────────────────────────────
+function toggleAutoMode() {
+  if (!mqttClient || !mqttClient.connected) {
+    addLog('error', '❌ MQTT chưa kết nối!'); return;
+  }
+  const newMode = !deviceStates.auto_mode;
+  sendCommand('auto_mode', newMode ? 'on' : 'off');
+  addLog('action', newMode
+    ? '🤖 Đã chuyển sang chế độ TỰ ĐỘNG — cảm biến điều khiển'
+    : '👆 Đã chuyển sang chế độ THỦ CÔNG — bạn điều khiển toàn bộ');
+}
+
+function updateAutoModeUI(isAuto) {
+  deviceStates.auto_mode = isAuto;
+  const led   = document.getElementById('led-automode');
+  const state = document.getElementById('state-automode');
+  const card  = document.getElementById('card-automode');
+  if (!led || !state || !card) return;
+  if (isAuto) {
+    led.style.background  = 'var(--signal-green)';
+    led.style.boxShadow   = '0 0 8px var(--signal-green)';
+    state.style.color     = 'var(--signal-green)';
+    state.textContent     = '🤖 Tự động (cảm biến)';
+    card.style.borderColor = 'rgba(95,191,141,0.35)';
+  } else {
+    led.style.background  = 'var(--signal-amber)';
+    led.style.boxShadow   = '0 0 8px var(--signal-amber)';
+    state.style.color     = 'var(--signal-amber)';
+    state.textContent     = '👆 Thủ công (bạn điều khiển)';
+    card.style.borderColor = 'rgba(224,164,88,0.45)';
+  }
 }
 
 function getActionText(device, action) {
