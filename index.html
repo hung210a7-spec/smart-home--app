@@ -312,6 +312,55 @@ body {
 }
 .device-card.on .state { color: var(--signal-green); background: rgba(95,191,141,0.08); border-color: rgba(95,191,141,0.25); }
 
+.grid-span-2 {
+  grid-column: span 2;
+}
+
+/* Operational Mode Container */
+.mode-toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin: 14px 16px 12px;
+  padding: 14px 20px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.02);
+}
+.mode-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ink);
+}
+.mode-switch-group {
+  display: flex;
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 3px;
+}
+.mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-dim);
+  font-family: 'Inter', sans-serif;
+  padding: 8px 16px;
+  font-size: 0.75em;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.mode-btn.active {
+  background: linear-gradient(180deg, var(--brass-bright), var(--brass));
+  color: #1a1308;
+  box-shadow: 0 2px 6px rgba(200, 155, 92, 0.35);
+}
+
 .commands-hint {
   background: var(--panel-raised);
   border: 1px solid var(--line);
@@ -522,6 +571,15 @@ body {
     <div class="chat-msg"><span class="time">--:--</span><span class="ai">Nhật ký lệnh sẽ hiển thị ở đây...</span></div>
   </div>
 
+  <!-- Mode Toggle (Auto / Manual) -->
+  <div class="mode-toggle-container">
+    <span class="mode-label">Chế độ vận hành:</span>
+    <div class="mode-switch-group">
+      <button id="btn-mode-auto" onclick="setSystemMode(true)" class="mode-btn active">🤖 Tự động</button>
+      <button id="btn-mode-manual" onclick="setSystemMode(false)" class="mode-btn">👆 Thủ công</button>
+    </div>
+  </div>
+
   <div class="device-grid">
     <div class="device-card" id="card-light1" onclick="manualToggle('light1')">
       <span class="led-dot"></span>
@@ -547,7 +605,7 @@ body {
       <div class="name">Quạt 2</div>
       <div class="state" id="state-fan2">Tắt</div>
     </div>
-    <div class="device-card" id="card-door" onclick="manualToggle('door')">
+    <div class="device-card grid-span-2" id="card-door" onclick="manualToggle('door')">
       <span class="led-dot"></span>
       <div class="icon">🚪</div>
       <div class="name">Cửa</div>
@@ -562,15 +620,6 @@ body {
       <div class="icon">⚠️</div>
       <div class="name">Khí Gas</div>
       <div class="state" id="state-gas">-- %</div>
-    </div>
-    <!-- Nút chế độ Thủ công / Tự động -->
-    <div class="device-card" id="card-automode" onclick="toggleAutoMode()" style="grid-column: 1 / -1; flex-direction: row; align-items:center; gap:14px; justify-content:center; padding: 14px 20px;">
-      <span class="led-dot" id="led-automode" style="background: var(--signal-green); box-shadow: 0 0 8px var(--signal-green);"></span>
-      <div style="text-align:left;">
-        <div class="name" style="font-size:1em; margin-bottom:3px;">Chế độ điều khiển</div>
-        <div class="state" id="state-automode" style="font-size:0.9em; color:var(--signal-green); font-weight:600;">🤖 Tự động (cảm biến)</div>
-      </div>
-      <div style="margin-left:auto; font-size:0.78em; color:var(--ink-dim); font-family:'JetBrains Mono',monospace; text-align:right;">Nhấn để đổi</div>
     </div>
   </div>
 
@@ -649,9 +698,9 @@ body {
 
 <script>
 // ===== CẤU HÌNH CỐ ĐỊNH =====
-const MQTT_HOST     = '82d1a724bd224aecae723b111b1b0123.s1.eu.hivemq.cloud';
+const MQTT_HOST     = 'b5ce82cad41c4f209a7ecb3409f688c9.s1.eu.hivemq.cloud';
 const MQTT_PORT     = 8884;
-const MQTT_USER     = 'hung210a8';
+const MQTT_USER     = 'hung210a7';
 const MQTT_TOPIC    = 'smarthome/nhacuatoi/cmd';
 const MQTT_STATUS   = 'smarthome/nhacuatoi/status';
 // =============================
@@ -659,7 +708,8 @@ const MQTT_STATUS   = 'smarthome/nhacuatoi/status';
 let mqttClient = null;
 let isListening = false;
 let isProcessing = false;
-const deviceStates = { light1:false, light2:false, fan:false, fan2:false, door:false, auto_mode:true };
+let gAutoMode = true; // true = Tự động, false = Thủ công
+const deviceStates = { light1:false, light2:false, fan:false, fan2:false, door:false };
 let currentTemp = null;
 let currentHumi = null;
 
@@ -676,17 +726,12 @@ function connect() {
   if (mqttClient) { mqttClient.end(true); mqttClient = null; }
 
   const clientId = 'webapp_' + Math.random().toString(16).slice(2,8);
-  console.log('[MQTT] Đang kết nối tới wss://' + MQTT_HOST + ':' + MQTT_PORT + '/mqtt');
-  console.log('[MQTT] user=' + MQTT_USER + ' pass=' + mqttPass.substring(0,4) + '...');
   mqttClient = mqtt.connect('wss://' + MQTT_HOST + ':' + MQTT_PORT + '/mqtt', {
     clientId,
     username: MQTT_USER,
     password: mqttPass,
     clean: true,
     reconnectPeriod: 5000,
-    protocolVersion: 4,   // MQTT 3.1.1 — tương thích HiveMQ Cloud
-    keepalive: 60,
-    connectTimeout: 10000,
   });
 
   mqttClient.on('connect', () => {
@@ -702,39 +747,27 @@ function connect() {
   mqttClient.on('message', (topic, message) => {
     try {
       const d = JSON.parse(message.toString());
-
-      // ── Relay states (cả S3 lẫn slave đều publish) ──────────────────
       if (d.light1 !== undefined) updateCard('light1', d.light1);
       if (d.light2 !== undefined) updateCard('light2', d.light2);
-      if (d.fan    !== undefined) updateCard('fan',    d.fan);
-      if (d.fan2   !== undefined) updateCard('fan2',   d.fan2);
-      if (d.door   !== undefined) updateCard('door',   d.door);
-
-      // ── Nhiệt độ / Độ ẩm ──────────────────────────────────────────
+      if (d.fan   !== undefined) updateCard('fan',    d.fan);
+      if (d.fan2  !== undefined) updateCard('fan2',   d.fan2);
+      if (d.door  !== undefined) updateCard('door',   d.door);
+      if (d.auto_mode !== undefined) updateModeUI(d.auto_mode);
       if (d.temp !== undefined) {
         currentTemp = parseFloat(d.temp).toFixed(1);
         currentHumi = parseFloat(d.humi).toFixed(1);
         document.getElementById('state-temp').textContent = currentTemp + '°C / ' + currentHumi + '%';
       }
-
-      // ── Chế độ Tự động / Thủ công ────────────────────────────────
-      if (d.auto_mode !== undefined) updateAutoModeUI(d.auto_mode);
-
-      // ── Khí Gas ──────────────────────────────────────────────────
-      // FIX: code cũ có điều kiện `d.gas !== undefined && d.temp === undefined`.
-      // Nhưng ESP32-S3 luôn gửi "temp" VÀ "gas" CHUNG 1 gói JSON (cùng
-      // publishStatus()), nên d.temp không bao giờ undefined khi có gas
-      // → card Gas mãi mãi không cập nhật. Bỏ điều kiện thừa đó.
       if (d.gas !== undefined) {
+        document.getElementById('state-gas').textContent = d.gas + '%';
         const gasCard = document.getElementById('card-gas');
         if (d.gas > 40) {
           gasCard.classList.add('on');
-          document.getElementById('state-gas').style.color = 'var(--signal-red)';
-          document.getElementById('state-gas').textContent = d.gas + '% ⚠️ Cảnh báo!';
+          document.getElementById('state-gas').style.color = '#ef4444';
+          document.getElementById('state-gas').textContent = d.gas + '% - Cảnh báo!';
         } else {
           gasCard.classList.remove('on');
           document.getElementById('state-gas').style.color = '';
-          document.getElementById('state-gas').textContent = d.gas + '%';
         }
       }
       
@@ -800,6 +833,8 @@ let silenceTimer = null;
 let audioCtx = null;
 let recognition = null;
 let recRestartTimer = null;
+let activeUtterance = null;
+let activeSpeechTimeout = null;
 
 function initRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -988,7 +1023,16 @@ async function processLiveSpeech(text) {
 1. Nhận diện và thực thi điều khiển thiết bị thông minh khi được yêu cầu.
 2. Trả lời các câu hỏi trò chuyện, kiến thức thông thường của người dùng một cách đầy đủ, thông minh, chi tiết và thân thiện bằng CHÍNH NGÔN NGỮ mà người dùng đang giao tiếp (hỗ trợ cả Tiếng Việt, Tiếng Anh, Tiếng Nhật, v.v.).
 
-Thiết bị hợp lệ: light1 (đèn 1), light2 (đèn 2), fan (quạt), door (cửa), lcd_tab (màn hình hiển thị LCD, hành động là "1" - màn hình chính/màn chờ, "2" - màn hình cảm biến, "3" - màn hình lời nhắc), all (tất cả).
+Thiết bị hợp lệ:
+- light1 (đèn 1)
+- light2 (đèn 2)
+- fan (quạt 1)
+- fan2 (quạt 2)
+- door (cửa)
+- auto_mode (chế độ tự động/thủ công, hành động là "on" để bật tự động, "off" để chuyển sang thủ công)
+- lcd_tab (màn hình hiển thị LCD, hành động là "1" - màn hình chính, "2" - màn hình cảm biến, "3" - màn hình lời nhắc)
+- all (tất cả)
+
 Hành động hợp lệ: "on" (bật/mở), "off" (tắt/đóng/khóa) hoặc "1", "2", "3" (dành riêng cho lcd_tab).
 
 Yêu cầu trả về JSON định dạng sau (không giải thích hay thêm văn bản khác ngoài JSON):
@@ -1012,9 +1056,9 @@ Ví dụ suy luận:
 - "what is your name" → {"commands": [], "speak": "My name is Jarvis, your smart home assistant.", "lang": "en-US"}
 - "bặt đèn 2 tắt đèn 1" → {"commands": [{"device":"light2","action":"on"}, {"device":"light1","action":"off"}], "speak": "Đã bật đèn hai và tắt đèn một", "lang": "vi-VN"}
 - "nhiệt độ phòng thế nào" → {"commands": [{"device":"lcd_tab","action":"2"}], "speak": "temp_humi", "lang": "vi-VN"}
-- "về màn hình chính" → {"commands": [{"device":"lcd_tab","action":"1"}], "speak": "Đã quay về màn hình chính", "lang": "vi-VN"}
-- "chuyển sang màn hình cảm biến" → {"commands": [{"device":"lcd_tab","action":"2"}], "speak": "Đã chuyển sang màn hình cảm biến", "lang": "vi-VN"}
-- "hiển thị lời nhắc" → {"commands": [{"device":"lcd_tab","action":"3"}], "speak": "Đã chuyển sang màn hình lời nhắc", "lang": "vi-VN"}
+- "bật tự động" → {"commands": [{"device":"auto_mode","action":"on"}], "speak": "Đã bật chế độ tự động", "lang": "vi-VN"}
+- "tắt tự động" → {"commands": [{"device":"auto_mode","action":"off"}], "speak": "Đã chuyển sang chế độ thủ công", "lang": "vi-VN"}
+- "bật quạt 2" → {"commands": [{"device":"fan2","action":"on"}], "speak": "Đã bật quạt hai", "lang": "vi-VN"}
 
 Câu nói của người dùng: "${text}"`;
 
@@ -1112,13 +1156,21 @@ function sendCommand(device, action) {
   }
   mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device, action }), { qos:1 });
   if (device === 'all') {
-    ['light1','light2','fan','fan2'].forEach(d => updateCard(d, action === 'on'));
+    ['light1','light2'].forEach(d => updateCard(d, action === 'on'));
+    if (!gAutoMode) {
+      ['fan','fan2'].forEach(d => updateCard(d, action === 'on'));
+    }
   } else {
     updateCard(device, action === 'on');
   }
 }
 
 function manualToggle(device) {
+  if ((device === 'fan' || device === 'fan2') && gAutoMode) {
+    addLog('error', `⚠️ Hệ thống đang ở chế độ TỰ ĐỘNG. Vui lòng chuyển sang Thủ công để điều khiển quạt.`);
+    speak("Vui lòng chuyển sang chế độ thủ công để điều khiển quạt.");
+    return;
+  }
   const newState = !deviceStates[device];
   sendCommand(device, newState ? 'on' : 'off');
   addLog('action', '👆 ' + getActionText(device, newState ? 'on' : 'off'));
@@ -1137,48 +1189,39 @@ function updateCard(device, state) {
   card.classList.toggle('on', state);
 }
 
-// ─── Chế độ Tự động / Thủ công ───────────────────────────────────────────────
-function toggleAutoMode() {
-  if (!mqttClient || !mqttClient.connected) {
-    addLog('error', '❌ MQTT chưa kết nối!'); return;
-  }
-  const newMode = !deviceStates.auto_mode;
-  sendCommand('auto_mode', newMode ? 'on' : 'off');
-  addLog('action', newMode
-    ? '🤖 Đã chuyển sang chế độ TỰ ĐỘNG — cảm biến điều khiển'
-    : '👆 Đã chuyển sang chế độ THỦ CÔNG — bạn điều khiển toàn bộ');
-}
-
-function updateAutoModeUI(isAuto) {
-  deviceStates.auto_mode = isAuto;
-  const led   = document.getElementById('led-automode');
-  const state = document.getElementById('state-automode');
-  const card  = document.getElementById('card-automode');
-  if (!led || !state || !card) return;
-  if (isAuto) {
-    led.style.background  = 'var(--signal-green)';
-    led.style.boxShadow   = '0 0 8px var(--signal-green)';
-    state.style.color     = 'var(--signal-green)';
-    state.textContent     = '🤖 Tự động (cảm biến)';
-    card.style.borderColor = 'rgba(95,191,141,0.35)';
-  } else {
-    led.style.background  = 'var(--signal-amber)';
-    led.style.boxShadow   = '0 0 8px var(--signal-amber)';
-    state.style.color     = 'var(--signal-amber)';
-    state.textContent     = '👆 Thủ công (bạn điều khiển)';
-    card.style.borderColor = 'rgba(224,164,88,0.45)';
-  }
-}
-
 function getActionText(device, action) {
-  const deviceNames = { light1:'đèn 1', light2:'đèn 2', fan:'quạt 1', fan2:'quạt 2', door:'cửa', all:'tất cả thiết bị', lcd_tab:'màn hình LCD' };
+  const deviceNames = { light1:'đèn 1', light2:'đèn 2', fan:'quạt 1', fan2:'quạt 2', door:'cửa', all:'tất cả thiết bị', lcd_tab:'màn hình LCD', auto_mode:'chế độ vận hành' };
   const dName = deviceNames[device] || device;
   if (device === 'lcd_tab') {
     const screenNames = { '1':'màn hình chính', '2':'màn hình cảm biến', '3':'màn hình lời nhắc' };
     return `Chuyển ${dName} sang ${screenNames[action] || action}`;
   }
+  if (device === 'auto_mode') {
+    return `Chuyển ${dName} sang ${action === 'on' ? 'Tự động' : 'Thủ công'}`;
+  }
   const aText = action === 'on' ? (device === 'door' ? 'mở' : 'bật') : (device === 'door' ? 'đóng' : 'tắt');
   return `${aText.charAt(0).toUpperCase() + aText.slice(1)} ${dName}`;
+}
+
+function updateModeUI(autoMode) {
+  gAutoMode = autoMode;
+  const btnAuto = document.getElementById('btn-mode-auto');
+  const btnManual = document.getElementById('btn-mode-manual');
+  if (btnAuto && btnManual) {
+    btnAuto.classList.toggle('active', autoMode);
+    btnManual.classList.toggle('active', !autoMode);
+  }
+}
+
+function setSystemMode(autoMode) {
+  if (!mqttClient || !mqttClient.connected) {
+    addLog('error', '❌ MQTT chưa kết nối!');
+    return;
+  }
+  const action = autoMode ? 'on' : 'off';
+  mqttClient.publish(MQTT_TOPIC, JSON.stringify({ device: 'auto_mode', action }), { qos: 1 });
+  updateModeUI(autoMode);
+  addLog('action', `⚙️ Chuyển chế độ sang: ${autoMode ? 'TỰ ĐỘNG' : 'THỦ CÔNG'}`);
 }
 
 function addLog(type, text) {
@@ -1227,7 +1270,7 @@ function stripMarkdownAndEmoji(text) {
     .replace(/_(.*?)_/g, '$1')
     .replace(/`{1,3}([^`]*)`{1,3}/g, '$1')
     .replace(/^#{1,6}\s*/gm, '')
-    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}]/gu, '')
+    .replace(/\p{Emoji_Presentation}/gu, '')
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n{2,}/g, '. ')
     .trim();
@@ -1272,85 +1315,91 @@ function normalizeSymbolsVi(text) {
     .replace(/\bwi-fi\b/gi, 'Quai phai');
 }
 
-let ttsWatchdog = null; // Safety timer — nếu onend không bắn thì tự reset
-
 function speak(text, langCode = 'vi-VN') {
   if (!window.speechSynthesis || !text) {
     if (isConversationActive) startSilenceTimer();
     return;
   }
+  
+  // Huy am thanh dang phat va don dep cac bo hen gio truoc do
   window.speechSynthesis.cancel();
-  if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; }
+  if (activeSpeechTimeout) {
+    clearTimeout(activeSpeechTimeout);
+    activeSpeechTimeout = null;
+  }
 
   let cleanText = stripMarkdownAndEmoji(text);
   if (langCode.startsWith('vi')) {
     cleanText = normalizeSymbolsVi(cleanText);
   } else {
-    cleanText = cleanText.replace(/°\s*C\b/gi, ' degrees C').replace(/°\s*F\b/gi, ' degrees F').replace(/%/g, ' percent');
+    cleanText = cleanText.replace(/\\u00b0\\s*C\\b/gi, ' degrees C').replace(/\\u00b0\\s*F\\b/gi, ' degrees F').replace(/%/g, ' percent');
   }
 
-  const utterance = new SpeechSynthesisUtterance(cleanText);
-  utterance.lang   = langCode;
-  utterance.rate   = langCode.startsWith('vi') ? 1.05 : 1.0;
-  utterance.pitch  = 1.0;
-  utterance.volume = 1.0;
+  // Tao doi tuong Utterance va luu vao bien toan cuc de tranh bi Garbage Collection
+  activeUtterance = new SpeechSynthesisUtterance(cleanText);
+  activeUtterance.lang = langCode;
+  activeUtterance.rate = langCode.startsWith('vi') ? 1.05 : 1.0;
+  activeUtterance.pitch = 1.0;
+  activeUtterance.volume = 1.0;
 
   const voices = window.speechSynthesis.getVoices();
   const langPrefix = langCode.split('-')[0].toLowerCase();
+  
   let targetVoice = null;
   const savedViVoice = localStorage.getItem('sh_vi_voice');
   const savedEnVoice = localStorage.getItem('sh_en_voice');
-  if (langPrefix === 'vi' && savedViVoice) targetVoice = voices.find(v => v.name === savedViVoice);
-  else if (langPrefix === 'en' && savedEnVoice) targetVoice = voices.find(v => v.name === savedEnVoice);
+
+  if (langPrefix === 'vi' && savedViVoice) {
+    targetVoice = voices.find(v => v.name === savedViVoice);
+  } else if (langPrefix === 'en' && savedEnVoice) {
+    targetVoice = voices.find(v => v.name === savedEnVoice);
+  }
+
   if (!targetVoice) {
-    const matched = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
-    targetVoice = pickBestVoice(matched);
+    const matchedVoices = voices.filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix));
+    targetVoice = pickBestVoice(matchedVoices);
   }
+  
   if (targetVoice) {
-    utterance.voice = targetVoice;
-    console.log('TTS voice:', targetVoice.name);
+    activeUtterance.voice = targetVoice;
+    console.log('Selected Voice:', targetVoice.name, '(' + langCode + ')', 'score:', scoreVoice(targetVoice));
   }
 
-  if (isConversationActive) {
-    setLiveState('SPEAKING');
-    document.getElementById('voiceStatus').textContent = '🗣️ ' + cleanText.slice(0, 60) + (cleanText.length > 60 ? '…' : '');
+  // Su dung setTimeout 250ms de giai quyet triet de loi bat dong bo race condition cua Chrome
+  activeSpeechTimeout = setTimeout(() => {
+    if (!isConversationActive) {
+      window.speechSynthesis.speak(activeUtterance);
+      return;
+    }
 
-    const resetAfterSpeak = () => {
-      if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; }
+    setLiveState('SPEAKING');
+    
+    // Watchdog safety timer phong truong hop onend khong kich hoat do loi he thong TTS cua Chrome
+    let watchdogTimer = setTimeout(() => {
+      console.warn('Watchdog kich hoat: TTS ket thuc cham hoac bi do.');
+      if (isConversationActive && liveState === 'SPEAKING') {
+        startSilenceTimer();
+      }
+    }, Math.max(4000, cleanText.length * 100 + 2000)); // 100ms moi ky tu + 2s du phong
+
+    activeUtterance.onend = () => {
+      clearTimeout(watchdogTimer);
+      console.log('AI da noi xong, bat dau cho 5s');
       if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING') {
         startSilenceTimer();
       }
     };
 
-    utterance.onend   = resetAfterSpeak;
-    utterance.onerror = (e) => {
-      if (e.error === 'interrupted') return; // bị barge-in — bình thường
-      console.warn('TTS error:', e.error);
-      resetAfterSpeak();
+    activeUtterance.onerror = (e) => {
+      clearTimeout(watchdogTimer);
+      console.warn('Loi phat am thanh:', e);
+      if (isConversationActive && liveState !== 'USER_SPEAKING' && liveState !== 'PROCESSING' && e.error !== 'interrupted') {
+        startSilenceTimer();
+      }
     };
 
-    // ── Chrome TTS watchdog ──────────────────────────────────────────────
-    // Chrome bug: utterance.onend đôi khi không bắn (tab mất focus, engine kẹt).
-    // Tính thời lượng ước tính (~80ms/ký tự ở tốc độ 1.05x) rồi đặt timer fallback.
-    // Nếu sau đó TTS vẫn còn "speaking" thì gọi cancel() để giải phóng.
-    const estimatedMs = Math.max(2500, cleanText.length * 80);
-    ttsWatchdog = setTimeout(() => {
-      if (isConversationActive && liveState === 'SPEAKING') {
-        console.warn('TTS watchdog: onend không bắn sau', estimatedMs, 'ms — force reset');
-        window.speechSynthesis.cancel();
-        resetAfterSpeak();
-      }
-    }, estimatedMs + 2500);
-
-    // Chrome TTS pause bug: Chrome tự dừng TTS sau ~15s nếu không có interaction.
-    // Workaround: resume() mỗi 10s trong khi AI đang nói.
-    const resumeInterval = setInterval(() => {
-      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-      if (!window.speechSynthesis.speaking || liveState !== 'SPEAKING') clearInterval(resumeInterval);
-    }, 10000);
-  }
-
-  window.speechSynthesis.speak(utterance);
+    window.speechSynthesis.speak(activeUtterance);
+  }, 250);
 }
 
 // Đọc thử một câu mẫu chứa các ký tự/đơn vị hay bị đọc sai, để người dùng nghe và
